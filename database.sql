@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS stock (
 
 CREATE TABLE IF NOT EXISTS usuarios (
 	email VARCHAR(30),
-	pasword VARCHAR(100) NOT NULL,
+	password VARCHAR(100) NOT NULL,
 	tipo VARCHAR(13) NOT NULL,
 	CONSTRAINT usuarios_pk PRIMARY KEY (email)
 ) ENGINE = InnoDB;
