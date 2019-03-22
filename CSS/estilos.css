@@ -60,3 +60,6 @@ body {
 	border: 5px solid #00886d;
 	margin: 50px 0px 20px 0px;
 }
+table, tr, td {
+	border: 1px solid black;
+}
