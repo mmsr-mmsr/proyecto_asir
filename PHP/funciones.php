@@ -35,18 +35,47 @@
 		}
 		else echo "la consulta ha fallado o no hay usuarios que mostrar";
 	}
-	function crear_usuario() {
-		
+	function crear_usuario($email, $password, $tipo, $ubicaciones) {
+		$password = md5($password);
+		$conexion = conexion_database();
+		$transaccion = True;
+		$conexion->autocommit(false);
+		$sentencia = $conexion->prepare("INSERT INTO usuarios VALUES(?, ?, ?)");
+		$sentencia->bind_param("sss", $email, $password, $tipo);
+		if (!$sentencia->execute() or $sentencia->affected_rows == 0)	$transaccion = False;
+		if (is_array($ubicaciones)) {
+			$sentencia = $conexion->prepare("INSERT INTO gestiona VALUES(?, ?)");
+			foreach ($ubicaciones as $ubicacion) {
+				$sentencia->bind_param("ss", $ubicacion, $email);
+				if (!$sentencia->execute() or $sentencia->affected_rows == 0) $transaccion = False;
+			}
+		}
+		if ($transaccion === False) {
+			$conexion->rollback();
+			return False;
+		} else {
+			$conexion->commit();
+			return True;
+		}
 	}
 
 	function borrar_usuario($email) {
 		$conexion = conexion_database();
 		$sentencia = $conexion->prepare("DELETE FROM usuarios WHERE LOWER(email) = LOWER(?)");
 		$sentencia->bind_param("s", $email);
-		if (!$sentencia->execute())	return False;
+		if (!$sentencia->execute() or $sentencia->affected_rows == 0) return False;
 		else return True;
 	}
 
+	function modificar_password($email, $password) {
+		$conexion = conexion_database();
+		$password = md5($password);
+		$sentencia = $conexion->prepare("UPDATE usuarios SET password = ? WHERE email = ?");
+		$sentencia->bind_param("ss", $password, $email);
+		if (!$sentencia->execute() or $sentencia->affected_rows == 0) return False;
+		else return True;
+
+	}
 	function registrar_login($fecha, $email, $descripcion) {
 		$conexion = conexion_database();
 		$evento = "login";

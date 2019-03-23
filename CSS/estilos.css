@@ -60,6 +60,21 @@ body {
 	border: 5px solid #00886d;
 	margin: 50px 0px 20px 0px;
 }
-table, tr, td {
+table, tr, td, th {
 	border: 1px solid black;
+}
+
+.nav-link {
+	color: white !important;
+}
+
+.nav-link:hover {
+	color: #36d7b7 !important;
+}
+.dropdown-item:hover{
+	color: #00886d;
+}
+
+.navbar-toggler-icon {
+	background-image: url("/IMG/menu.png");
 }

@@ -1,5 +1,5 @@
 DROP DATABASE inventario;
-SET autocommit=0;
+-- SET autocommit=0;
 CREATE DATABASE IF NOT EXISTS inventario;
 USE inventario;
 
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 	CONSTRAINT usuarios_pk PRIMARY KEY (email)
 ) ENGINE = InnoDB;
 
-CREATE TABLE IF NOT EXISTS GESTIONA (
+CREATE TABLE IF NOT EXISTS gestiona (
 	ubicacion VARCHAR(4),
 	usuario VARCHAR(30),
 	CONSTRAINT gestiona_pk PRIMARY KEY (ubicacion, usuario),
@@ -95,7 +95,4 @@ END$
 
 DELIMITER ;
 
-INSERT INTO ubicaciones VALUES ("1234AAA", "SECRETARIA", NULL);
-INSERT INTO articulos VALUES ("1234BBB", "LAPIZ", NULL);
-INSERT INTO usuarios VALUES ("1234CCC", "abc", "administrador");
-INSERT INTO stock VALUES ("1234AAA", "1234BBB", 1);
+INSERT INTO usuarios VALUES ("admin", "21232f297a57a5a743894a0e4a801fc3", "administrador");
