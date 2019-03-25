@@ -78,3 +78,7 @@ table, tr, td, th {
 .navbar-toggler-icon {
 	background-image: url("/IMG/menu.png");
 }
+
+nav {
+	font-size: 120%;
+}

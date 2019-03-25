@@ -17,7 +17,7 @@
 			$_SESSION['email'] = $_COOKIE['email'];
 			$_SESSION['password'] = $_COOKIE['password'];
 			$_SESSION['tipo'] = $resultado_validacion['tipo'];
-			registrar_login(time(), $_SESSION['email'], "Login realizado correctamente");
+			registrar_evento(time(), $_SESSION['email'], "Login realizado correctamente", "login");
 			header('Location: /PHP/menu.php');
 		} else {
 			//SI LAS CREDENCIALES ALMACENADAS NO SON CORRECTAS (HAN CAMBIADO EN LA DATABASE O EL USUARIO YA NO EXISTE), LAS BORRAMOS
@@ -37,96 +37,17 @@
 				setcookie("email", $_POST['campo_email'], time() + 60 * 60 * 24 * 30, "/");
 				setcookie("password", $_POST['campo_password'], time() + 60 * 60 * 24 * 30, "/");
 			}
-			registrar_login(time(), $_SESSION['email'], "Login realizado correctamente");
+			registrar_evento(time(), $_SESSION['email'], "Login realizado correctamente", "login");
 			header('Location: /PHP/menu.php');
 		} else {
-			echo "BAD LOGIN";
-			registrar_login(time(), $_POST['campo_email'], "Login fallido. Credenciales erroneas");
+			registrar_evento(time(), $_POST['campo_email'], "Login fallido. Credenciales erroneas", "login");
 		}
 	}
 	//*** FIN DE BLOQUE ***
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-	<title>IES SERRA PERENXISA</title>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-	<link rel="icon" type="image/jpg" href="../IMG/logo1.jpg">
-	<link rel="stylesheet" href="../CSS/bootstrap.css">
-	<link rel="stylesheet" href="../CSS/estilos.css">
-	<script src="../JS/jquery-3.3.1.js"></script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.1/css/all.css" integrity="sha384-gfdkjb5BdAXd+lj+gudLWI+BXq4IuLW5IT+brZEZsLFm++aCMlF1V92rMkPaX4PP" crossorigin="anonymous">
-</head>
-<body>
-	<div>
-		<!-- <nav class="navbar navbar-expand-lg color_fuerte">
-			<a class="navbar-brand" href="../PHP/index.php">
-				<img src="../IMG/logo2.png" height="60" id="logo2" class="d-inline-block align-middle rounded" alt="Serra Perenxisa">
-			</a>
-			<div class="collapse navbar-collapse" id="navbarTogglerDemo02">
-				<ul class="navbar-nav mr-auto mt-2 mt-lg-0">
-
-				</ul>
-				<ul class="navbar-nav ml-auto nav-flex-icons">
-					<li class="nav-item avatar">
-						<p>No has iniciado sesión</p>
-					</li>
-				 </ul>
-			</div>
-		</nav> -->
-		<!--Navbar -->
-	<nav class="mb-1 navbar navbar-expand-lg color_fuerte">
-		<a class="navbar-brand" href="../PHP/index.php">
-			<img src="../IMG/logo2.png" height="60" id="logo2" class="d-inline-block align-middle rounded" alt="Serra Perenxisa">
-		</a>
-		<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent-555" aria-controls="navbarSupportedContent-555" aria-expanded="false" aria-label="Toggle navigation">
-		<span class="navbar-toggler-icon"></span>
-		</button>
-		<div class="collapse navbar-collapse" id="navbarSupportedContent-555">
-			<ul class="navbar-nav mr-auto">
-				<li class="nav-item">
-					<a class="nav-link" href="#">Artículos</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" href="#">Logs</a>
-				</li>
-				<li class="nav-item active">
-					<a class="nav-link" href="#">Ubicaciones
-						<span class="sr-only">(current)</span>
-					</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" href="#">Usuarios</a>
-				</li>
-<!-- 				<li class="nav-item dropdown">
-					<a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink-555" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dropdown
-					</a>
-					<div class="dropdown-menu dropdown-secondary" aria-labelledby="navbarDropdownMenuLink-555">
-						<a class="dropdown-item" href="#">Action</a>
-						<a class="dropdown-item" href="#">Another action</a>
-						<a class="dropdown-item" href="#">Something else here</a>
-					</div>
-				</li> -->
-			</ul>
-			<ul class="navbar-nav ml-auto nav-flex-icons">
-				<li class="nav-item avatar dropdown">
-					<a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink-55" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-						No has iniciado sesión
-					</a>
-					<div class="dropdown-menu dropdown-menu-right dropdown-secondary" aria-labelledby="navbarDropdownMenuLink-55">
-						<a class="dropdown-item" href="#">Cerrar sesión</a>
-					</div>
-				</li>
-			</ul>
-		</div>
-	</nav>
-<!--/.Navbar -->
-		<div class="container">        
-			<a href="../PHP/index.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
-		</div>
+<?php
+	imprimir_cabecera();
+?>
 		<div id="login" class="container col-11 col-sm-8 col-md-6 col-lg-6 col-xl-4 color_fuerte">
 			<form class="form" action="" method="post">
 				<div class="form-group">

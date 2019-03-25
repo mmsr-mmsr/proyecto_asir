@@ -1,13 +1,6 @@
 <?php
 	session_start();
 	include "funciones.php";
-	if (modificar_password("miriam", "pene2")) echo "modificado";
-	else echo "no modi";
-	// if (crear_usuario("miriam", "pene", "editor", array("AAAA", "BBBB"))) echo "USUARIO CREADO";
-	// else echo "USUARIO NO";
-		// if (borrar_usuario("miriam")) {
-		// 	echo "usuario borrado";
-		// } else echo "Usuario NO borrado";
 	if (isset($_POST['cerrar_sesion'])) cerrar_sesion();
 	/* *** INICIO DE BLOQUE COMÚN A TODAS LAS PÁGINAS WEB DE LA APLICACIÓN PARA CONTROLAR EL INICIO DE SESIÓN. 
 	EN ESTA PÁGINA DIFIERE PORQUE SI YA SE HA HECHO LOGIN CORRECTO EN LA PÁGINA SE REDIRIGE A OTRO (NO TENDRÍA SENTIDO VOLVER A MOSTRAR EL FORMULARIO DE INICIO),
@@ -25,7 +18,7 @@
 					$_SESSION['email'] = $_COOKIE['email'];
 					$_SESSION['password'] = $_COOKIE['password'];
 					$_SESSION['tipo'] = $resultado_validacion['tipo'];
-					registrar_login(time(), $_SESSION['email'], "Login realizado correctamente");
+					registrar_evento(time(), $_SESSION['email'], "Login realizado correctamente", "login");
 			} else {
 					//SI LAS CREDENCIALES ALMACENADAS NO SON CORRECTAS (HAN CAMBIADO EN LA DATABASE O EL USUARIO YA NO EXISTE), LAS BORRAMOS
 					setcookie("email", "", time() - 1, "/");
@@ -33,9 +26,6 @@
 					header('Location: /PHP/index.php');
 			}
 	} else header('Location: /PHP/index.php');
-	//*** FIN DE BLOQUE ***
-	// $resultado = $_POST['email']; 
-	// echo $resultado;
 ?>
 <!DOCTYPE html>
 <html>
@@ -103,11 +93,27 @@
 	 }
 	 echo "</table>";
 	}
+	echo "<pre>";
+	if (isset($_POST['enviar'])) {
+		print_r($_POST);
+		$resultado_creacion = crear_ubicacion($_POST['campo_codigo'], $_POST['campo_descripcion'], $_POST['campo_observaciones']);
+		if (!$resultado_creacion) echo "Se ha producido un error";
+		elseif (is_string($resultado_creacion)) echo $resultado_creacion;
+		else echo "Se ha creado correctamente";
+	}
 	// <td><a href='menu.php?campo_borrar=".$usuario['email']."' onclick=\"return confirmar_delete('".$usuario['email']."');\">Eliminar</a></td>
 	//                  <td><a href='menu.php?campo_borrar=".$usuario['email']."' onclick=\"return confirmar_delete('".$usuario['email']."');\">Modificar</a></td>
 	//                  <td><a href='menu.php?campo_borrar=".$usuario['email']."' onclick=\"return confirmar_delete('".$usuario['email']."');\">Visualizar</a></td>
 ?>
+<form method="post" action="">
+	CODIGO: <input type="text" name="campo_codigo">
+	DESCRIPCION: <input type="text" name="campo_descripcion">
+	OBSERVACIONES:<input type="text" name="campo_observaciones">
+	<input type="submit" name="enviar" value="enviar">
 
+</form>
+</body>
+</html>
 <!-- </head>
 <body>
 <input type="text" name="caja_texto" id="campo_email" value="0"/> 
