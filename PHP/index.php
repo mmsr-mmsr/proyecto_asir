@@ -46,7 +46,7 @@
 	//*** FIN DE BLOQUE ***
 ?>
 <?php
-	imprimir_cabecera();
+	imprimir_cabecera("index");
 ?>
 		<div id="login" class="container col-11 col-sm-8 col-md-6 col-lg-6 col-xl-4 color_fuerte">
 			<form class="form" action="" method="post">
