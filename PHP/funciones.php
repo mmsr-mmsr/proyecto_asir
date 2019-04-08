@@ -24,40 +24,49 @@
 		header('Location: /PHP/index.php');
 	}
 
-	function ver_usuarios() {
+	function ver_usuarios($filtro = "ninguno") {
 		$conexion = conexion_database();
-		$resultado = $conexion->query("SELECT email, tipo FROM usuarios");
-		if (is_object($resultado) and $resultado->num_rows > 0) {
-			while ($fila = $resultado->fetch_assoc()) {
-				$usuarios[] = $fila;
+		if ($filtro == "ninguno") {
+			$resultado = $conexion->query("SELECT email, nombre, tipo FROM usuarios ORDER BY email");
+			if (is_object($resultado) and $resultado->num_rows > 0) {
+				while ($fila = $resultado->fetch_assoc()) {
+					$usuarios[] = $fila;
+				}
+				return $usuarios;
 			}
-			return $usuarios;
+			else return False;
+		} else {
+			$filtro = "%".$filtro."%";
+			$sentencia = $conexion->prepare("SELECT email, nombre, tipo FROM usuarios WHERE email LIKE LOWER(?) OR LOWER(nombre) LIKE LOWER(?) ORDER BY email");
+			$sentencia->bind_param("ss", $filtro, $filtro);
+			if (!$sentencia->execute() or $sentencia->num_rows <= 0) return False;
+			else {
+				while ($fila = $resultado->fetch_assoc()) {
+					$usuarios[] = $fila;
+				}
+				return $usuarios;
+			}
 		}
-		else echo "la consulta ha fallado o no hay usuarios que mostrar";
 	}
 	/*AÑADIR COMPROBACIONES DE NO NULL, ¿AÑADIR NOMBRE Y APELLIDOS?*/
-	function crear_usuario($email, $password, $tipo, $ubicaciones) {
-		$password = md5($password);
+	function crear_usuario($email, $password, $nombre, $tipo, $ubicaciones = NULL) {
+		$password = md5($password); // CIFRAR CONTRASEÑA
+		if (empty($nombre)) $nombre = null;
+		else $nombre = ucwords($nombre); //
 		$conexion = conexion_database();
-		$transaccion = True;
-		$conexion->autocommit(false);
-		$sentencia = $conexion->prepare("INSERT INTO usuarios VALUES(LOWER(?), ?, LOWER(?))");
-		$sentencia->bind_param("sss", $email, $password, $tipo);
-		if (!$sentencia->execute() or $sentencia->affected_rows == 0)	$transaccion = False;
-		if (is_array($ubicaciones)) {
-			$sentencia = $conexion->prepare("INSERT INTO gestiona VALUES(UPPER(?), LOWER(?))");
-			foreach ($ubicaciones as $ubicacion) {
-				$sentencia->bind_param("ss", $ubicacion, $email);
-				if (!$sentencia->execute() or $sentencia->affected_rows == 0) $transaccion = False;
-			}
-		}
-		if ($transaccion === False) {
-			$conexion->rollback();
-			return False;
-		} else {
-			$conexion->commit();
-			return True;
-		}
+		// $transaccion = True;
+		// $conexion->autocommit(false);
+		$sentencia = $conexion->prepare("INSERT INTO usuarios VALUES(LOWER(?), ?, ?, LOWER(?))");
+		$sentencia->bind_param("ssss", $email, $password, $nombre, $tipo);
+		if (!$sentencia->execute() or $sentencia->affected_rows == 0)	return false;
+		else return True;
+		// if (is_array($ubicaciones)) {
+		// 	$sentencia = $conexion->prepare("INSERT INTO gestiona VALUES(UPPER(?), LOWER(?))");
+		// 	foreach ($ubicaciones as $ubicacion) {
+		// 		$sentencia->bind_param("ss", $ubicacion, $email);
+		// 		if (!$sentencia->execute() or $sentencia->affected_rows == 0) $transaccion = False;
+		// 	}
+		// }
 	}
 
 	function borrar_usuario($email) {
@@ -87,9 +96,9 @@
 	function crear_ubicacion($codigo, $descripcion, $observaciones) {
 		if (empty($codigo)) return "El código de la ubicación se debe rellenar";
 		elseif (empty($descripcion)) return "La descripción de la ubicación se debe rellenar";
-		elseif (strlen($codigo) != 4) return "El código debe ser de 4 dígitos"; 
+		elseif (strlen($codigo) != 4) return "El código debe ser de 4 dígitos";
 		elseif (empty($observaciones)) $observaciones = null;
-		
+
 		$conexion = conexion_database();
 		$sentencia = $conexion->prepare("INSERT INTO ubicaciones VALUES (UPPER(?), ?, ?)");
 		$sentencia->bind_param("sss", $codigo, $descripcion, $observaciones);
@@ -119,25 +128,11 @@
 			<meta charset="utf-8">
 			<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 			<link rel="icon" type="image/jpg" href="../IMG/logo1.jpg">
+			<!-- hojas de estilos -->
 			<link rel="stylesheet" href="../CSS/bootstrap.css">
 			<link rel="stylesheet" href="../CSS/estilos.css">
-			<script src="../JS/jquery-3.3.1.js"></script>
-			<script type="text/javascript">
-				window.onload = resaltar_actual;
-				function resaltar_actual() {
-					var pagina_activa = document.getElementById('<?php echo $pagina_activa; ?>');
-					pagina_activa.className += " pagina_activa";
-				}
-
-			</script>
-			<script>
-				$(document).ready(function(){
-  					$('[data-toggle="tooltip"]').tooltip();
-				});
-			</script>
-			<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-			<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-			<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.1/css/all.css" integrity="sha384-gfdkjb5BdAXd+lj+gudLWI+BXq4IuLW5IT+brZEZsLFm++aCMlF1V92rMkPaX4PP" crossorigin="anonymous">
+			<link rel="stylesheet" href="../CSS/iconos.css">
+			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css">
 		</head>
 		<body>
 			<div>
@@ -188,7 +183,7 @@
 					echo $_SESSION['email'];
 				} else {
 					echo "No has iniciado sesión";
-				}	
+				}
 		?>
 							</a>
 							<div class="dropdown-menu dropdown-menu-right dropdown-secondary" aria-labelledby="navbarDropdownMenuLink-55">
@@ -198,20 +193,11 @@
 					</ul>
 				</div>
 			</nav>
-			
+
 		<!--/.Navbar -->
-				<div class="container">        
+				<div class="container">
 					<a href="../PHP/index.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
 				</div>
-						<!-- 				<li class="nav-item dropdown">
-							<a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink-555" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dropdown
-							</a>
-							<div class="dropdown-menu dropdown-secondary" aria-labelledby="navbarDropdownMenuLink-555">
-								<a class="dropdown-item" href="#">Action</a>
-								<a class="dropdown-item" href="#">Another action</a>
-								<a class="dropdown-item" href="#">Something else here</a>
-							</div>
-						</li> -->
 		<?php
 			}
 		?>

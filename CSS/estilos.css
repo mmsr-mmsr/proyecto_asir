@@ -15,7 +15,7 @@
 		margin-top: 100px !important;
 		height: 320px !important;
 	}
-	
+
 	body {
 		background-color: red !important;
 	}*/
@@ -80,4 +80,18 @@ table, tr, td, th {
 
 nav {
 	font-size: 120%;
+}
+button {
+	border: none;
+	background: transparent;
+}
+
+table input {
+	width: 100%;
+	border: 0px;
+	border-radius: 0.25rem;
+}
+
+table input[readonly] {
+	background: transparent;
 }

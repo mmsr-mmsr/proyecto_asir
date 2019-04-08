@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS stock (
 CREATE TABLE IF NOT EXISTS usuarios (
 	email VARCHAR(30),
 	password VARCHAR(100) NOT NULL,
+	nombre VARCHAR(50),
 	tipo VARCHAR(13) NOT NULL,
 	CONSTRAINT usuarios_pk PRIMARY KEY (email)
 ) ENGINE = InnoDB;
@@ -94,4 +95,8 @@ END$
 
 DELIMITER ;
 
-INSERT INTO usuarios VALUES ("admin", "21232f297a57a5a743894a0e4a801fc3", "administrador");
+INSERT INTO usuarios VALUES ("admin", "21232f297a57a5a743894a0e4a801fc3", "miguel", "administrador");
+INSERT INTO usuarios VALUES ("miriam", "21232f297a57a5a743894a0e4a801fc3", "miriam", "administrador");
+INSERT INTO usuarios VALUES ("10282084@iesserraperenxisa.com", "21232f297a57a5a743894a0e4a801fc3", "santi", "editor");
+INSERT INTO usuarios VALUES ("10282085@iesserraperenxisa.com", "21232f297a57a5a743894a0e4a801fc3", "juanjo", "estandar");
+
