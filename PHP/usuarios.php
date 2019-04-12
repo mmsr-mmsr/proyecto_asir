@@ -5,7 +5,6 @@
 	/* *** INICIO DE BLOQUE COMÚN A TODAS LAS PÁGINAS WEB DE LA APLICACIÓN PARA CONTROLAR EL INICIO DE SESIÓN.
 	EN ESTA PÁGINA DIFIERE PORQUE SI YA SE HA HECHO LOGIN CORRECTO EN LA PÁGINA SE REDIRIGE A OTRO (NO TENDRÍA SENTIDO VOLVER A MOSTRAR EL FORMULARIO DE INICIO),
 	EN EL RESTO SE PERMITIRÁ VER EL CONTENIDO Y EN CASO DE NO HABER HECHO LOGIN SE REDIRIGIRÁ AQUÍ *** */
-
 	/*1- SE COMPRUEBA SI HAY UNA SESIÓN INICIADA. EN CASO AFIRMATIVO SE PERMITE LA VISUALIZACIÓN DE LA PÁGINA
 			(O REDIRIGIR A /PHP/menu.php EN CASO DE SER /PHP/index.php)*/
 	if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo'])) $variable = null;
@@ -48,16 +47,23 @@
 		</thead>
 		<tbody id="contenido_usuarios">
 <?php
+	define("TIPO_USUARIO_SELECCIONADO", " selected");
 	foreach ($resultado_usuarios as $usuario) {
 		echo "
 			<tr>
 				<td><input type='text' name='campo_email' value='".$usuario['email']."' readonly></td>
 				<td><input type='text' name='campo_nombre' value='".$usuario['nombre']."' readonly></td>
-				<td><input type='text' name='campo_tipo' value='".$usuario['tipo']."' readonly></td>
 				<td>
-					<button id='' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>
+					<select class='custom-select' disabled>
+	          <option value='estandar'"; if ($usuario['tipo'] == "estandar") echo TIPO_USUARIO_SELECCIONADO; echo ">Estándar</option>
+	          <option value='editor'"; if ($usuario['tipo'] == "editor") echo TIPO_USUARIO_SELECCIONADO; echo ">Editor</option>
+	          <option value='administrador'"; if ($usuario['tipo'] == "administrador") echo TIPO_USUARIO_SELECCIONADO; echo ">Administrador</option>
+	        </select>
+				<td>
+					<button onclick='ver_ubicaciones(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>
 					<button onclick='eliminar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar usuario'><i class='fas fa-trash'></i></button>
-					<button id='' type='button' data-toggle='tooltip' data-placement='top' title='Modificar usuario'><i class='fas fa-pen'></i></button>
+					<button onclick='modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar usuario'><i class='fas fa-pen'></i></button>
+					<button onclick='modificar_password(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar contraseña'><i class='fas fa-key'></i></button>
 				</td>
 			</tr>
 		";
@@ -71,7 +77,7 @@
 </div>
 <p id="id_resultado"></p>
 <script src="../JS/jquery-3.3.1.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.js"></script>
+<script src="../JS/jquery-confirm.min.js"></script>
 <script src="../JS/popper.min.js"></script>
 <script src="../JS/bootstrap.min.js"></script>
 <script type="text/javascript">

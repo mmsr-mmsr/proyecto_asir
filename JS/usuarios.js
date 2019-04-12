@@ -8,7 +8,6 @@ function recargar_usuarios(filtro = "ninguno"){
     $("#contenido_usuarios").html(resultadox);
   });
 }
-
 //FUNCIÓN DE ELIMINAR USUARIO, PIDE CONFIRMACIÓN ANTES DE REALIZAR EL BORRADO
 function eliminar_usuario(elemento){
   //OBTENER EL EMAIL DEL USUARIO QUE SE DESEA ELIMINAR
@@ -21,7 +20,7 @@ function eliminar_usuario(elemento){
       Eliminar: function () {
         $.post("../PHP/AJAX/eliminar_usuario.php",
         {
-          campo_correo: email
+          campo_email: email
         },
         function(resultado) {
           $("#id_resultado").html(resultado);
@@ -48,22 +47,76 @@ $("#crear_usuario").click(function(){
         "</select>" +
       "</td>" +
       "<td>" +
-        "<button onclick='crear_usuario(this) 'id='' type='button' data-toggle='tooltip' data-placement='top' title='Confirmar'><i class='fas fa-check'></i></button>" +
+        "<button onclick='confirmar_crear_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Confirmar'><i class='fas fa-check'></i></button>" +
         "<button onclick='cancelar_nuevo_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Cancelar'><i class='fas fa-times'></i></button>" +
       "</td>" +
     "</tr>"
   )
 });
-
 // VALIDA SI UN EMAIL ES CORRECTO, DEVUELVE TRUE O FALSE
 function validar_email(email) {
   var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return re.test(String(email).toLowerCase());
 }
+function modificar_usuario(elemento) {
+  var fila, botones, nombre, tipo;
+  // CAMBIAR LOS INPUTS nombre Y tipo A EDITABLES
+  fila = $(elemento).parent().siblings();
+  nombre = fila[1]['firstChild'];
+  tipo = fila[2]['children'][0];
+  console.log(fila);
+  $(nombre).removeAttr("readonly");
+  $(tipo).removeAttr("disabled");
 
+  // CAMBIAR LOS BOTONES DE "ACCIONES" POR LOS DE CONFIRMAR O CANCELAR LA MODIFICACIÓN
+  botones = $(elemento).parent();
+  $(botones).html(
+    "<button onclick='confirmar_modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Confirmar'><i class='fas fa-check'></i></button>" +
+    "<button onclick='cancelar_modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Cancelar'><i class='fas fa-times'></i></button>"
+  );
+}
+function confirmar_modificar_usuario(elemento) {
+  var fila, email, nombre, tipo;
+  // CAMBIAR LOS INPUTS nombre Y tipo A EDITABLES
+  fila = $(elemento).parent().siblings();
+  email = fila[0]['firstChild']['value'];
+  nombre = fila[1]['firstChild']['value'];
+  tipo = fila[2]['children'][0]['value'];
+  $.post("../PHP/AJAX/modificar_usuario.php",
+  {
+    campo_email: email,
+    campo_nombre: nombre,
+    campo_tipo: tipo
+  },
+  function(resultado) {
+    if (resultado == "CORRECTO") {
+      $.alert("Se ha modificado correctamente al usuario " + email);
+      recargar_usuarios();
+    } else {
+      $.alert(resultado);
+    }
+  });
+}
+function cancelar_modificar_usuario(elemento) {
+  var botones, fila, tipo;
+  // CAMBIAR LOS INPUTS A MODO NO EDITABLE
+  fila = $(elemento).parent().siblings();
+  nombre = fila[1]['firstChild'];
+  tipo = fila[2]['children'][0];
+  $(nombre).attr("readonly", "readonly");
+  $(tipo).attr("disabled", "disabled");
+
+  // CAMBIAR LOS BOTONES DE CONFIRMAR O CANCELAR LA MODIFICACIÓN POR LOS HABITUALES DE "ACCIONES"
+  botones = $(elemento).parent();
+  $(botones).html(
+    "<button type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>" +
+    "<button onclick='eliminar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar usuario'><i class='fas fa-trash'></i></button>" +
+    "<button onclick='modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar usuario'><i class='fas fa-pen'></i></button>"
+  );
+}
 // AL HACER CLICK EN EL BOTÓN DE CONFIRMAR NUEVO USUARIO SE COMPRUEBA QUE SE HAYA INTRODUCIDO EMAIL Y TENGA UN FORMATO CORRECTO.
 // TAMBIÉN SE SOLICITA CONTRASEÑAS Y SI TODOS LOS DATOS SOLICITADOS SON CORRECTOS SE LLAMA MEDIANTE AJAX A LA FUNCIÓN PHP QUE CREA EL USUARIO
-function crear_usuario(elemento) {
+function confirmar_crear_usuario(elemento) {
   fila = $(elemento).parent().siblings();
   email = fila[0]['firstChild']['value'];
   nombre = fila[1]['firstChild']['value'];
@@ -74,7 +127,7 @@ function crear_usuario(elemento) {
       return false;
   // COMPROBAR QUE EL EMAIL TENGA UN FORMATO CORRECTO
   } else if (!validar_email(email)) {
-    $.alert("El email debe tener un formato correcto, nada de ");
+    $.alert("El email debe tener un formato correcto, ni ");
     return false;
   } else {
     $.confirm({
@@ -105,15 +158,18 @@ function crear_usuario(elemento) {
             } else {
               $.post("../PHP/AJAX/crear_usuario.php",
               {
-                campo_correo: email,
+                campo_email: email,
                 campo_password: password_1,
                 campo_nombre: nombre,
                 campo_tipo: tipo
               },
               function(resultado) {
-                $("#id_resultado").html(resultado);
-                $("#id_resultado").hide(5000);
-                recargar_usuarios();
+                if (resultado == "CORRECTO") {
+                  $.alert("Se ha creado correctamente al usuario " + email);
+                  recargar_usuarios();
+                } else {
+                  $.alert(resultado);
+                }
               });
             }
           }
@@ -124,9 +180,141 @@ function crear_usuario(elemento) {
     });
   }
 }
-
 // AL CANCELAR LA CREACIÓN DE UN USUARIO, SE ELIMINA LA FILA CREADA
 function cancelar_nuevo_usuario(elemento) {
   fila = $(elemento).parent().parent();
   $(fila).remove();
+}
+function modificar_password(elemento) {
+  var fila, email;
+  // ALMACENAR EL EMAIL PARA SABER QUÉ USUARIO DEBEMOS MODIFICAR LA PASSWORD
+  fila = $(elemento).parent().siblings();
+  email = fila[0]['firstChild']['value'];
+
+  $.post("../PHP/AJAX/modificar_password.php",
+  {
+    campo_email: email,
+    campo_password: password_1
+  },
+  function(resultado) {
+    if (resultado == "CORRECTO") {
+      $.alert("Se ha modificado correctamente la contraseña del usuario " + email);
+    } else {
+      $.alert(resultado);
+    }
+  });
+  // MOSTRAR UNA VENTANA PARA QUE ESCRIBA LA NUEVA CONTRASEÑA
+  $.confirm({
+    title: "Introduce la nueva contraseña para el usuario " + email + ": ",
+    columnClass: "col-sm-12 col-md-10 col-lg-6 col-xl-8",
+    content: "" +
+      "<form action='' class='formName'>" +
+        "<div class='form-group'>" +
+          "<input type='password' id='campo_password_1' placeholder='Contraseña' class='name form-control'>" +
+          "<br>" +
+          "<input type='password' id='campo_password_2' placeholder='Repite la contraseña' class='name form-control'>" +
+        "</div>" +
+      "</form>",
+    buttons: {
+      Modificar: {
+        btnClass: "btn color_intermedio",
+        action: function () {
+          var password_1 = $("#campo_password_1").val();
+          var password_2 = $("#campo_password_2").val();
+          // COMPROBAR QUE SE HAYAN INTRODUCIDO AMBAS
+          if (!password_1 || !password_2) {
+              $.alert("Debes rellenar ambos campos.");
+              return false;
+          // COMPROBAR QUE SEAN IGUALES
+          } else if (password_1 != password_2) {
+            $.alert("Las contraseñas deben coincidir.");
+            return false;
+          } else {
+            $.post("../PHP/AJAX/modificar_password.php",
+            {
+              campo_email: email,
+              campo_password: password_1
+            },
+            function(resultado) {
+              if (resultado == "CORRECTO") {
+                $.alert("Se ha modificado correctamente la contraseña del usuario " + email);
+              } else {
+                $.alert(resultado);
+              }
+            });
+          }
+        }
+      },
+      Cancelar: function () {
+      },
+    }
+  });
+
+}
+function ver_ubicaciones(elemento) {
+    var fila, email;
+    // ALMACENAR EL EMAIL PARA SABER QUÉ USUARIO DEBEMOS MOSTRAR SUS UBICACIONES
+    fila = $(elemento).parent().siblings();
+    email = fila[0]['firstChild']['value'];
+
+    // OBTENER POR AJAX LAS LOCALIZACIONES QUE EL USUARIO PUEDE GESTIONAR
+    $.post("../PHP/AJAX/ver_ubicaciones_administrador.php",
+    {
+      campo_email: email
+    },
+    function(resultado) {
+      $.confirm({
+        title: "Ubicaciones del usuario " + email + ": ",
+        columnClass: "col-sm-12 col-md-10 col-lg-6 col-xl-8",
+        content: "" +
+          "<form action='' class='formName'>" +
+            "<div class='form-group'>" +
+              "<input type='password' id='campo_password_1' placeholder='Contraseña' class='name form-control'>" +
+              "<br>" +
+              "<input type='password' id='campo_password_2' placeholder='Repite la contraseña' class='name form-control'>" +
+            "</div>" +
+          "</form>",
+        buttons: {
+          Confirmar: {
+            btnClass: "btn color_intermedio",
+            action: function () {
+              var password_1 = $("#campo_password_1").val();
+              var password_2 = $("#campo_password_2").val();
+              // COMPROBAR QUE SE HAYAN INTRODUCIDO AMBAS
+              if (!password_1 || !password_2) {
+                  $.alert("Debes rellenar ambos campos.");
+                  return false;
+              // COMPROBAR QUE SEAN IGUALES
+              } else if (password_1 != password_2) {
+                $.alert("Las contraseñas deben coincidir.");
+                return false;
+              } else {
+                $.post("../PHP/AJAX/modificar_password.php",
+                {
+                  campo_email: email,
+                  campo_password: password_1
+                },
+                function(resultado) {
+                  if (resultado == "CORRECTO") {
+                    $.alert("Se ha modificado correctamente la contraseña del usuario " + email);
+                  } else {
+                    $.alert(resultado);
+                  }
+                });
+              }
+            }
+          },
+          Cancelar: function () {
+          },
+        }
+      });
+
+      if (resultado == "FALLO") {
+        $.alert("Se ha producido un error al intentar visualizar las localizaciones del usuario. Puede que ya no exista el usuario, prueba a actualizar la página");
+      } else {
+        $.alert(resultado);
+      }
+    });
+    // MOSTRAR LAS UBICACIONES
+
 }

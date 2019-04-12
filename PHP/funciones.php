@@ -1,10 +1,33 @@
 <?php
+	use PHPMailer\PHPMailer\PHPMailer;
+	use PHPMailer\PHPMailer\Exception;
 	//FUNCIÓN PARA CONECTARSE A LA BD DE LA APLICACIÓN
 	function conexion_database() {
 		$conexion = new mysqli("localhost", "root", "", "inventario");
 		return $conexion;
 	}
-	//
+	function enviar_email($email, $asunto, $contenido) {
+		// INCLUIR LIBRERÍAS NECESARIAS
+		require 'PHPMAILER/Exception.php';
+		require 'PHPMAILER/PHPMailer.php';
+		require 'PHPMAILER/SMTP.php';
+		$mail = new PHPMailer(true);
+		$mail->SMTPDebug = 0;
+		$mail->IsSMTP();
+		$mail->Host = "smtp.gmail.com";
+		$mail->SMTPAuth = true;
+		$mail->Username   = 'inventario@iesserraperenxisa.com';
+		$mail->Password   = 'X3nq6%qL';
+		$mail->SMTPSecure = 'ssl';
+		$mail->Port       = 465;
+		$mail->setFrom('inventario@iesserraperenxisa.com', 'Mailer');
+		$mail->addAddress($email);
+		$mail->isHTML(true);
+		$mail->Subject = $asunto;
+    $mail->Body    = $contenido;
+    $mail->AltBody = $contenido;
+    $mail->send();
+	}
 	function validar_login($email, $password) {
 		$conexion = conexion_database();
 		$sentencia = $conexion->prepare("SELECT password, tipo FROM usuarios WHERE email = LOWER(?)");
@@ -23,7 +46,6 @@
 		if (isset($_COOKIE['password'])) setcookie("password", "", time() - 1, "/");
 		header('Location: /PHP/index.php');
 	}
-
 	function ver_usuarios($filtro = "ninguno") {
 		$conexion = conexion_database();
 		if ($filtro == "ninguno") {
@@ -48,7 +70,6 @@
 			}
 		}
 	}
-	/*AÑADIR COMPROBACIONES DE NO NULL, ¿AÑADIR NOMBRE Y APELLIDOS?*/
 	function crear_usuario($email, $password, $nombre, $tipo, $ubicaciones = NULL) {
 		$password = md5($password); // CIFRAR CONTRASEÑA
 		if (empty($nombre)) $nombre = null;
@@ -68,7 +89,6 @@
 		// 	}
 		// }
 	}
-
 	function borrar_usuario($email) {
 		$conexion = conexion_database();
 		$sentencia = $conexion->prepare("DELETE FROM usuarios WHERE LOWER(email) = LOWER(?)");
@@ -76,7 +96,17 @@
 		if (!$sentencia->execute() or $sentencia->affected_rows == 0) return False;
 		else return True;
 	}
-
+	function modificar_usuario($email, $nombre, $tipo) {
+		if (empty($nombre)) $nombre = null;
+		else $nombre = ucwords($nombre);
+		$tipo = strtolower($tipo);
+		$email = strtolower($email);
+		$conexion = conexion_database();
+		$sentencia = $conexion->prepare("UPDATE usuarios SET nombre = ?, tipo = ? WHERE email = ?");
+		$sentencia->bind_param("sss", $nombre, $tipo, $email);
+		if (!$sentencia->execute() or $sentencia->affected_rows == 0) return False;
+		else return True;
+	}
 	function modificar_password($email, $password) {
 		$conexion = conexion_database();
 		$password = md5($password);
@@ -85,6 +115,29 @@
 		if (!$sentencia->execute() or $sentencia->affected_rows == 0) return False;
 		else return True;
 
+	}
+	function ver_ubicaciones_administrador($email) {
+		$email = strtolower($email);
+		$conexion = conexion_database();
+		$sentencia = $conexion->prepare("SELECT codigo, descripcion FROM ubicaciones WHERE codigo IN (SELECT ubicacion FROM gestiona WHERE usuario = ? ) ");
+		$sentencia->bind_param("s", $email);
+		if (!$sentencia->execute()) return False;
+		$resultado = $sentencia->get_result();
+		if ($resultado->num_rows > 0) {
+			while ($fila = $resultado->fetch_assoc()) {
+				$localizaciones["gestionadas"][] = $fila;
+			}
+		}
+		$sentencia = $conexion->prepare("SELECT codigo, descripcion FROM ubicaciones WHERE codigo NOT IN (SELECT ubicacion FROM gestiona WHERE usuario = ? ) ");
+		$sentencia->bind_param("s", $email);
+		if (!$sentencia->execute()) return False;
+		$resultado = $sentencia->get_result();
+		if ($resultado->num_rows > 0) {
+			while ($fila = $resultado->fetch_assoc()) {
+				$localizaciones["nogestionadas"][] = $fila;
+			}
+		}
+		return $localizaciones;
 	}
 	function registrar_evento($fecha, $email, $descripcion, $evento) {
 		$conexion = conexion_database();
@@ -107,7 +160,6 @@
 			else return False;
 		} else return True;
 	}
-
 	function elimina_ubicacion($codigo, $confirmacion = null) {
 		$conexion = conexion_database();
 		$sentencia = $conexion->prepare("SELECT codigo FROM ubicaciones WHERE codigo = UPPER(?)");
