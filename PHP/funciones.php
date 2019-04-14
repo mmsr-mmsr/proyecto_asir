@@ -85,7 +85,7 @@
 		// 	$sentencia = $conexion->prepare("INSERT INTO gestiona VALUES(UPPER(?), LOWER(?))");
 		// 	foreach ($ubicaciones as $ubicacion) {
 		// 		$sentencia->bind_param("ss", $ubicacion, $email);
-		// 		if (!$sentencia->execute() or $sentencia->affected_rows == 0) $transaccion = False;
+				if (!$sentencia->execute() or $sentencia->affected_rows == 0) $transaccion = False;
 		// 	}
 		// }
 	}
@@ -125,7 +125,7 @@
 		$resultado = $sentencia->get_result();
 		if ($resultado->num_rows > 0) {
 			while ($fila = $resultado->fetch_assoc()) {
-				$localizaciones["gestionadas"][] = $fila;
+				$ubicaciones["gestionadas"][] = $fila;
 			}
 		}
 		$sentencia = $conexion->prepare("SELECT codigo, descripcion FROM ubicaciones WHERE codigo NOT IN (SELECT ubicacion FROM gestiona WHERE usuario = ? ) ");
@@ -134,10 +134,40 @@
 		$resultado = $sentencia->get_result();
 		if ($resultado->num_rows > 0) {
 			while ($fila = $resultado->fetch_assoc()) {
-				$localizaciones["nogestionadas"][] = $fila;
+				$ubicaciones["nogestionadas"][] = $fila;
 			}
 		}
-		return $localizaciones;
+		return $ubicaciones;
+	}
+	function modificar_ubicaciones_administrador($email, $ubicaciones) {
+		$email = strtolower($email);
+		$conexion = conexion_database();
+		//INICIAR TRANSACCIÓN
+		$transaccion = True;
+		$conexion->autocommit(false);
+
+		//ELIMINAR LAS UBICACIONES QUE GESTIONA. SI NO SE HA PEDIDO AÑADIR PERMISOS SOBRE UNA UBICACIÓN DEVOLVEMOS TRUE
+		$sentencia = $conexion->prepare("DELETE FROM gestiona WHERE usuario = ?");
+		$sentencia->bind_param("s", $email);
+		if (!$sentencia->execute())	return False;
+		elseif ($ubicaciones == "ninguno") {
+			$conexion->commit();
+			return True;
+		}
+		//PREPARAR LA SENTENCIA INSERT Y VINCULAR LAS VARIABLES, GANANDO EFICIENCIA EN CASO DE REALIZAR MUCHOS INSERTS
+		$sentencia = $conexion->prepare("INSERT INTO gestiona VALUES (? , ?)");
+		$sentencia->bind_param("ss", $indice, $email);
+
+		//RECORRER EL ARRAY DE UBICACIONES, SI UNA INSERCIÓN FALLA HACEMOS ROLLBACK Y DEVOLVEMOS FALSE
+		foreach ($ubicaciones as $indice) {
+			if (!$sentencia->execute()) {
+				$conexion->rollback();
+				return False;
+			}
+		}
+		//SI LA EJECUCIÓN DEL PROGRAMA HA LLEGADO HASTA AQUÍ CONFIRMAMOS LA EJECUCIÓN Y DEVOLVEMOS True
+		$conexion->commit();
+		return True;
 	}
 	function registrar_evento($fecha, $email, $descripcion, $evento) {
 		$conexion = conexion_database();
@@ -184,7 +214,7 @@
 			<link rel="stylesheet" href="../CSS/bootstrap.css">
 			<link rel="stylesheet" href="../CSS/estilos.css">
 			<link rel="stylesheet" href="../CSS/iconos.css">
-			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css">
+			<link rel="stylesheet" href="../CSS/jquery-confirm.min.css">
 		</head>
 		<body>
 			<div>

@@ -95,3 +95,10 @@ table input {
 table input[readonly] {
 	background: transparent;
 }
+#lista_ubicaciones_seleccionadas .list-group-item:hover {
+	background-color: #cf3919;
+}
+
+#lista_ubicaciones_seleccionadas {
+	padding-inline-start: 0px;
+}

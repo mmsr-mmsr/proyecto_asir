@@ -251,70 +251,72 @@ function modificar_password(elemento) {
   });
 
 }
+$("#prueba").click(function(){
+  alert("hola");
+});
 function ver_ubicaciones(elemento) {
-    var fila, email;
-    // ALMACENAR EL EMAIL PARA SABER QUÉ USUARIO DEBEMOS MOSTRAR SUS UBICACIONES
-    fila = $(elemento).parent().siblings();
-    email = fila[0]['firstChild']['value'];
+  var fila, email, ubicaciones_seleccionadas, ubicaciones_array;
+  // ALMACENAR EL EMAIL PARA SABER QUÉ USUARIO DEBEMOS MOSTRAR SUS UBICACIONES
+  fila = $(elemento).parent().siblings();
+  email = fila[0]['firstChild']['value'];
 
-    // OBTENER POR AJAX LAS LOCALIZACIONES QUE EL USUARIO PUEDE GESTIONAR
-    $.post("../PHP/AJAX/ver_ubicaciones_administrador.php",
-    {
-      campo_email: email
-    },
-    function(resultado) {
-      $.confirm({
-        title: "Ubicaciones del usuario " + email + ": ",
-        columnClass: "col-sm-12 col-md-10 col-lg-6 col-xl-8",
-        content: "" +
-          "<form action='' class='formName'>" +
-            "<div class='form-group'>" +
-              "<input type='password' id='campo_password_1' placeholder='Contraseña' class='name form-control'>" +
-              "<br>" +
-              "<input type='password' id='campo_password_2' placeholder='Repite la contraseña' class='name form-control'>" +
-            "</div>" +
-          "</form>",
-        buttons: {
-          Confirmar: {
-            btnClass: "btn color_intermedio",
-            action: function () {
-              var password_1 = $("#campo_password_1").val();
-              var password_2 = $("#campo_password_2").val();
-              // COMPROBAR QUE SE HAYAN INTRODUCIDO AMBAS
-              if (!password_1 || !password_2) {
-                  $.alert("Debes rellenar ambos campos.");
-                  return false;
-              // COMPROBAR QUE SEAN IGUALES
-              } else if (password_1 != password_2) {
-                $.alert("Las contraseñas deben coincidir.");
-                return false;
-              } else {
-                $.post("../PHP/AJAX/modificar_password.php",
-                {
-                  campo_email: email,
-                  campo_password: password_1
-                },
-                function(resultado) {
-                  if (resultado == "CORRECTO") {
-                    $.alert("Se ha modificado correctamente la contraseña del usuario " + email);
-                  } else {
-                    $.alert(resultado);
-                  }
-                });
+  // OBTENER POR AJAX LAS LOCALIZACIONES QUE EL USUARIO PUEDE GESTIONAR
+  $.post("../PHP/AJAX/ver_ubicaciones_administrador.php",
+  {
+    campo_email: email
+  },
+  function(resultado) {
+
+    $.confirm({
+      title: "Ubicaciones del usuario " + email + ": ",
+      columnClass: "col-sm-12 col-md-12 col-lg-12 col-xl-6",
+      content: resultado,
+      buttons: {
+        Guardar_cambios: {
+          btnClass: "btn color_intermedio",
+          action: function () {
+            // GUARDAMOS EN LA VAR ubicaciones_seleccionadas LAS UBICACIONES SELECCIONADAS
+            ubicaciones_seleccionadas = $("#lista_ubicaciones_seleccionadas").children();
+            if (ubicaciones_seleccionadas.length == 0) {
+              ubicaciones_array = "ninguno";
+            } else {
+              ubicaciones_array = {};
+              for (var i = 0; i < ubicaciones_seleccionadas.length; i++) {
+                ubicaciones_array[i] = $(ubicaciones_seleccionadas[i]).attr("id");
               }
             }
-          },
-          Cancelar: function () {
-          },
-        }
-      });
-
-      if (resultado == "FALLO") {
-        $.alert("Se ha producido un error al intentar visualizar las localizaciones del usuario. Puede que ya no exista el usuario, prueba a actualizar la página");
-      } else {
-        $.alert(resultado);
+            $.post("../PHP/AJAX/modificar_ubicaciones_administrador.php",
+            {
+              campo_email: email,
+              campo_ubicaciones: ubicaciones_array
+            },
+            function(resultado) {
+              if (resultado == "CORRECTO") {
+                $.alert("Se ha modificado correctamente las ubicaciones que gestiona el usuario " + email);
+              } else {
+                $.alert("Se ha producido un error al intentar modificar las ubicaciones que gestiona el usuario " + email);
+              }
+            });
+          }
+        },
+        Cancelar: function () {
+        },
       }
     });
-    // MOSTRAR LAS UBICACIONES
+  });
+}
+function eliminar_ubicacion(elemento) {
+  var codigo, descripcion;
+  codigo = $(elemento).attr("id");
+  descripcion = $(elemento).text();
+  $("#lista_ubicaciones_seleccionables").append("<option id='" + codigo + "' value='" + codigo + "'>" + descripcion + "</option>")
+  $(elemento).remove();
+}
+function add_ubicacion(elemento) {
+  var codigo, descripcion;
+  codigo = $(elemento).val();
+  descripcion = $("#" + codigo).text();
+  $("#lista_ubicaciones_seleccionadas").append("<li onclick='eliminar_ubicacion(this)' class='list-group-item' id='" + codigo + "'>" + descripcion + "</li>")
+  $("#" + codigo).remove();
 
 }
