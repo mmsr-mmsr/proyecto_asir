@@ -17,7 +17,7 @@
 					$_SESSION['email'] = $_COOKIE['email'];
 					$_SESSION['password'] = $_COOKIE['password'];
 					$_SESSION['tipo'] = $resultado_validacion['tipo'];
-					registrar_login(time(), $_SESSION['email'], "Login realizado correctamente");
+					registrar_evento(time(), $_SESSION['email'], "Login realizado correctamente", "login");
 
 			} else {
 					//SI LAS CREDENCIALES ALMACENADAS NO SON CORRECTAS (HAN CAMBIADO EN LA DATABASE O EL USUARIO YA NO EXISTE), LAS BORRAMOS

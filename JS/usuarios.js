@@ -1,32 +1,67 @@
-// FUNCIÓN QUE RECARGA EL CONTENIDO DE LA TABLA USUARIOS, ES LLAMADA CADA VEZ QUE UNA FUNCIÓN HACE ALGUNA MODIFICACIÓN EN LA TABLA O LA FILTRA
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA COMPROBAR SI UN EMAIL TIENE EL FORMATO CORRECTO MEDIANTE UNA EXPRESIÓN REGULAR
+  RESULTADO: DEVUELVE FALSE SI NO TIENE UN FORMATO CORRECTO O TRUE SI SÍ QUE LO TIENE
+  LLAMADA: ES LLAMADA AL CREAR UN USUARIO.
+  PARÁMETROS:
+    - EMAIL: CADENA QUE VALIDAR
+*/
+function validar_email(email) {
+  var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  return re.test(String(email).toLowerCase());
+}
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA RECARGAR LA TABLA QUE CONTIENE INFORMACIÓN SOBRE LOS USUARIOS.
+  LLAMADA: ES LLAMADA CADA VEZ QUE SE REALIZA UN CAMBIO VISIBLE EN LA TABLA (BORRADO, MODIFICACIÓN O ADICIÓN DE USUARIOS)
+  PARÁMETROS:
+    - FILTRO: CADENA POR LA QUE FILTRAR EL RESULTADO, SI NO SE LE PASA TOMA EL VALOR = "ninguno"
+*/
 function recargar_usuarios(filtro = "ninguno"){
   $.post("../PHP/AJAX/recargar_usuarios.php",
   {
-    campo_filtro: "ninguno"
+    campo_filtro: filtro
   },
-  function(resultadox) {
-    $("#contenido_usuarios").html(resultadox);
+  function(resultado) {
+    $("#contenido_usuarios").html(resultado); //EL RESULTADO DEL SCRIPT PHP SUSTITUYE EL CONTENIDO DE LA TABLA
   });
 }
-//FUNCIÓN DE ELIMINAR USUARIO, PIDE CONFIRMACIÓN ANTES DE REALIZAR EL BORRADO
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA ELIMINAR UN USUARIO MEDIANTE UNA LLAMADA A PHP. TRAS REALIZAR LA ACCIÓN RECARGA LA PÁGINA
+  LLAMADA: ES LLAMADA CUANDO EL USUARIO PULSA EL BOTÓN DE BORRAR USUARIO -> <button onclick='eliminar_usuario(this)'>
+  PARÁMETROS:
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN. SERÁ UTILIZADO PARA OBTENER EL EMAIL
+*/
 function eliminar_usuario(elemento){
-  //OBTENER EL EMAIL DEL USUARIO QUE SE DESEA ELIMINAR
   fila = $(elemento).parent().siblings();
-  email = fila[0]['firstChild']['value'];
+  email = fila[0]['firstChild']['value']; // OBTENER EL EMAIL
   $.confirm({
     title: "Eliminar usuario",
+    columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6",
     content: "¿Estás seguro de eliminar al usuario " + email + "?",
     buttons: {
-      Eliminar: function () {
-        $.post("../PHP/AJAX/eliminar_usuario.php",
-        {
-          campo_email: email
-        },
-        function(resultado) {
-          $("#id_resultado").html(resultado);
-          $("#id_resultado").hide(5000);
-          recargar_usuarios();
-        });
+      Eliminar: {
+        btnClass: "btn color_intermedio",
+        action: function () { // TRAS PULSAR EL BOTÓN DE "ELIMINAR" LLAMA AL FICHERO PHP DE ELIMINAR USUARIO
+          $.post("../PHP/AJAX/eliminar_usuario.php",
+          {
+            campo_email: email // PASAR COMO PARÁMETRO EL email
+          },
+          function(resultado) {
+            if (resultado == "CORRECTO") {
+              $.alert({
+                title: "Usuario eliminado",
+                content: "Se ha eliminado correctamente al usuario " + email,
+                columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+              });
+              recargar_usuarios(); // RECARGAR LA TABLA
+            } else {
+              $.alert({
+                title: "Error",
+                content: "No se ha podido eliminar al usuario. Puede ser que ya no exista. Pruebe a recargar la página",
+                columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+              });
+            }
+          });
+        }
       },
       Cancelar: function () {
       },
@@ -53,18 +88,126 @@ $("#crear_usuario").click(function(){
     "</tr>"
   )
 });
-// VALIDA SI UN EMAIL ES CORRECTO, DEVUELVE TRUE O FALSE
-function validar_email(email) {
-  var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-  return re.test(String(email).toLowerCase());
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA RECOGER LOS DATOS DE UN NUEVO USUARIO Y LLAMAR AL SCRIPT PHP QUE LO CREE. ADEMÁS COMPROBARÁ QUE EL EMAIL ES VALIDO, QUE LAS CONTRASEÑAS CONCUERDEN Y QUE EL TIPO ES CORRECTO.
+  LLAMADA: ES LLAMADA AL HACER CLICK EN EL BOTÓN DE CONFIRMAR USUARIO NUEVO.
+  PARÁMETROS:
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
+*/
+function confirmar_crear_usuario(elemento) {
+  var fila, email, nombre, tipo, password_1, password_2;
+  // ALMACENAR LOS DATOS QUE EL USUARIO HA INTRODUCIDO
+  fila = $(elemento).parent().siblings();
+  email = fila[0]['firstChild']['value'];
+  nombre = fila[1]['firstChild']['value'];
+  tipo = fila[2]['firstChild']['value'];
+  // COMPROBAR QUE SE HAYA INTRODUCIDO UN EMAIL
+  if (!email) {
+    $.alert({
+      title: "ERROR",
+      content: "Se debe rellenar el campo email",
+      columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+    });
+      return false;
+  // COMPROBAR QUE EL EMAIL TENGA UN FORMATO CORRECTO
+  } else if (!validar_email(email)) {
+    $.alert({
+      title: "ERROR",
+      content: "El email debe tener un formato válido.",
+      columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+    });
+    return false;
+  } else {
+    $.confirm({ // MUESTRA UN FORMULARIO DONDE INTRODUCIR LA CONTRASEÑA DEL NUEVO USUARIO
+      title: "Introduce la contraseña para el usuario " + email + ": ",
+      columnClass: "col-sm-12 col-md-10 col-lg-8 col-xl-6",
+      content: "" +
+        "<form action='' class='formName'>" +
+          "<div class='form-group'>" +
+            "<input type='password' id='campo_password_1' placeholder='Contraseña' class='name form-control'>" +
+            "<br>" +
+            "<input type='password' id='campo_password_2' placeholder='Repite la contraseña' class='name form-control'>" +
+          "</div>" +
+        "</form>",
+      buttons: {
+        Crear: {
+          btnClass: "btn color_intermedio",
+          action: function () { // ENVÍA LOS DATOS AL SCRIPT PHP, ANTES VALIDA LAS CONTRASEÑAS INTRODUCIDAS
+            password_1 = $("#campo_password_1").val();
+            password_2 = $("#campo_password_2").val();
+            // COMPROBAR QUE SE HAYAN INTRODUCIDO AMBAS
+            if (!password_1 || !password_2) {
+              $.alert({
+                title: "ERROR",
+                content: "Se debe rellenar ambos campos.",
+                columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+              });
+                return false;
+            // COMPROBAR QUE SEAN IGUALES
+            } else if (password_1 != password_2) {
+              $.alert({
+                title: "ERROR",
+                content: "Las contraseñas deben coincidir.",
+                columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+              });
+              return false;
+            } else { // SI TODO ES CORRECTO LLAMA AL SCRIPT PHP
+              $.post("../PHP/AJAX/crear_usuario.php",
+              {
+                campo_email: email,
+                campo_password: password_1,
+                campo_nombre: nombre,
+                campo_tipo: tipo
+              },
+              function(resultado) {
+                if (resultado == "CORRECTO") {
+                  $.alert({
+                    title: "USUARIO CREADO",
+                    content: "Se ha creado correctamente al usuario " + email,
+                    columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+                  });
+                  recargar_usuarios(); // RECARGAR LA TABLA
+                } else {
+                  $.alert({
+                    title: "ERROR",
+                    content: "No se ha podido crear al usuario. Puede que ya exista. Pruebe a actualizar la página",
+                    columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+                  });
+                }
+              });
+            }
+          }
+        },
+        Cancelar: function () {
+        },
+      }
+    });
+  }
 }
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA ELIMINAR LA FILA GENERADA PARA CREAR UN NUEVO USUARIO
+  LLAMADA: ES LLAMADA AL HACER CLICK EN EL BOTÓN DE CANCELAR LA CREACIÓN DE NUEVO USUARIO
+  PARÁMETROS:
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
+*/
+function cancelar_nuevo_usuario(elemento) {
+  var fila;
+  fila = $(elemento).parent().parent();
+  $(fila).remove();
+}
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA COMPROBAR SI UN EMAIL TIENE EL FORMATO CORRECTO MEDIANTE UNA EXPRESIÓN REGULAR
+  RESULTADO: DEVUELVE FALSE SI NO TIENE UN FORMATO CORRECTO O TRUE SI SÍ QUE LO TIENE
+  LLAMADA: ES LLAMADA AL CREAR UN USUARIO.
+  PARÁMETROS:
+    - EMAIL: CADENA QUE VALIDAR
+*/
 function modificar_usuario(elemento) {
   var fila, botones, nombre, tipo;
   // CAMBIAR LOS INPUTS nombre Y tipo A EDITABLES
   fila = $(elemento).parent().siblings();
-  nombre = fila[1]['firstChild'];
-  tipo = fila[2]['children'][0];
-  console.log(fila);
+  nombre = fila[1]['firstChild']; // ALMACENAR NOMBRE
+  tipo = fila[2]['children'][0]; // ALMACENAR TIPO DE USUARIO
   $(nombre).removeAttr("readonly");
   $(tipo).removeAttr("disabled");
 
@@ -116,93 +259,11 @@ function cancelar_modificar_usuario(elemento) {
 }
 // AL HACER CLICK EN EL BOTÓN DE CONFIRMAR NUEVO USUARIO SE COMPRUEBA QUE SE HAYA INTRODUCIDO EMAIL Y TENGA UN FORMATO CORRECTO.
 // TAMBIÉN SE SOLICITA CONTRASEÑAS Y SI TODOS LOS DATOS SOLICITADOS SON CORRECTOS SE LLAMA MEDIANTE AJAX A LA FUNCIÓN PHP QUE CREA EL USUARIO
-function confirmar_crear_usuario(elemento) {
-  fila = $(elemento).parent().siblings();
-  email = fila[0]['firstChild']['value'];
-  nombre = fila[1]['firstChild']['value'];
-  tipo = fila[2]['firstChild']['value'];
-  // COMPROBAR QUE SE HAYA INTRODUCIDO UN EMAIL
-  if (!email) {
-      $.alert("Debes rellenar el email.");
-      return false;
-  // COMPROBAR QUE EL EMAIL TENGA UN FORMATO CORRECTO
-  } else if (!validar_email(email)) {
-    $.alert("El email debe tener un formato correcto, ni ");
-    return false;
-  } else {
-    $.confirm({
-      title: "Introduce la contraseña para el usuario " + email + ": ",
-      columnClass: "col-sm-12 col-md-10 col-lg-6 col-xl-8",
-      content: "" +
-        "<form action='' class='formName'>" +
-          "<div class='form-group'>" +
-            "<input type='password' id='campo_password_1' placeholder='Contraseña' class='name form-control'>" +
-            "<br>" +
-            "<input type='password' id='campo_password_2' placeholder='Repite la contraseña' class='name form-control'>" +
-          "</div>" +
-        "</form>",
-      buttons: {
-        Crear: {
-          btnClass: "btn color_intermedio",
-          action: function () {
-            var password_1 = $("#campo_password_1").val();
-            var password_2 = $("#campo_password_2").val();
-            // COMPROBAR QUE SE HAYAN INTRODUCIDO AMBAS
-            if (!password_1 || !password_2) {
-                $.alert("Debes rellenar ambos campos.");
-                return false;
-            // COMPROBAR QUE SEAN IGUALES
-            } else if (password_1 != password_2) {
-              $.alert("Las contraseñas deben coincidir.");
-              return false;
-            } else {
-              $.post("../PHP/AJAX/crear_usuario.php",
-              {
-                campo_email: email,
-                campo_password: password_1,
-                campo_nombre: nombre,
-                campo_tipo: tipo
-              },
-              function(resultado) {
-                if (resultado == "CORRECTO") {
-                  $.alert("Se ha creado correctamente al usuario " + email);
-                  recargar_usuarios();
-                } else {
-                  $.alert(resultado);
-                }
-              });
-            }
-          }
-        },
-        Cancelar: function () {
-        },
-      }
-    });
-  }
-}
-// AL CANCELAR LA CREACIÓN DE UN USUARIO, SE ELIMINA LA FILA CREADA
-function cancelar_nuevo_usuario(elemento) {
-  fila = $(elemento).parent().parent();
-  $(fila).remove();
-}
 function modificar_password(elemento) {
   var fila, email;
   // ALMACENAR EL EMAIL PARA SABER QUÉ USUARIO DEBEMOS MODIFICAR LA PASSWORD
   fila = $(elemento).parent().siblings();
   email = fila[0]['firstChild']['value'];
-
-  $.post("../PHP/AJAX/modificar_password.php",
-  {
-    campo_email: email,
-    campo_password: password_1
-  },
-  function(resultado) {
-    if (resultado == "CORRECTO") {
-      $.alert("Se ha modificado correctamente la contraseña del usuario " + email);
-    } else {
-      $.alert(resultado);
-    }
-  });
   // MOSTRAR UNA VENTANA PARA QUE ESCRIBA LA NUEVA CONTRASEÑA
   $.confirm({
     title: "Introduce la nueva contraseña para el usuario " + email + ": ",

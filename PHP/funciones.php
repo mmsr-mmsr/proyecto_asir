@@ -1,12 +1,12 @@
 <?php
 	use PHPMailer\PHPMailer\PHPMailer;
 	use PHPMailer\PHPMailer\Exception;
-	//FUNCIÓN PARA CONECTARSE A LA BD DE LA APLICACIÓN
-	function conexion_database() {
+	// FUNCIONES GENERALES
+		function conexion_database() {
 		$conexion = new mysqli("localhost", "root", "", "inventario");
 		return $conexion;
 	}
-	function enviar_email($email, $asunto, $contenido) {
+		function enviar_email($email, $asunto, $contenido) {
 		// INCLUIR LIBRERÍAS NECESARIAS
 		require 'PHPMAILER/Exception.php';
 		require 'PHPMAILER/PHPMailer.php';
@@ -28,7 +28,7 @@
     $mail->AltBody = $contenido;
     $mail->send();
 	}
-	function validar_login($email, $password) {
+		function validar_login($email, $password) {
 		$conexion = conexion_database();
 		$sentencia = $conexion->prepare("SELECT password, tipo FROM usuarios WHERE email = LOWER(?)");
 		$sentencia->bind_param("s", $email);
@@ -40,40 +40,55 @@
 		if ($resultado['password'] != md5($password)) return "La contraseña no es correcta";
 		else return array('tipo' => $resultado['tipo']);
 	}
-	function cerrar_sesion() {
+		function cerrar_sesion() {
 		if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo'])) session_destroy();
 		if (isset($_COOKIE['email'])) setcookie("email", "", time() - 1, "/");
 		if (isset($_COOKIE['password'])) setcookie("password", "", time() - 1, "/");
 		header('Location: /PHP/index.php');
 	}
-	function ver_usuarios($filtro = "ninguno") {
+		function registrar_evento($fecha, $email, $descripcion, $evento) {
 		$conexion = conexion_database();
-		if ($filtro == "ninguno") {
+		echo $email."<br>";
+		$sentencia = $conexion->prepare("INSERT INTO logs VALUES (?, LOWER(?), ?, ?)");
+		$sentencia->bind_param("isss", $fecha, $email, $descripcion, $evento);
+		$sentencia->execute();
+	}
+	// FUNCTIONES USUARIOS
+		function ver_usuarios($filtro = "ninguno") {
+		$conexion = conexion_database();
+		if ($filtro == "ninguno") { // SI NO SE HA SOLICITADO NINGÚN FILTRO CONSULTAMOS TODAS LAS FILAS
 			$resultado = $conexion->query("SELECT email, nombre, tipo FROM usuarios ORDER BY email");
-			if (is_object($resultado) and $resultado->num_rows > 0) {
-				while ($fila = $resultado->fetch_assoc()) {
+			if (!is_object($resultado) or $resultado->num_rows <= 0) { // COMPROBAR SI LA CONSULTA HA DEVULETO FILAS
+				$conexion->close();
+				return False;
+			} else {
+				while ($fila = $resultado->fetch_assoc()) { // RECORRER EL RESULTADO E IR AÑADIENDO LAS FILAS AL ARRAY $usuarios
 					$usuarios[] = $fila;
 				}
+				$conexion->close();
 				return $usuarios;
 			}
-			else return False;
-		} else {
+		} else { // EN CASO CONTRARIO AÑADIMOS LOS OPERADORES % PARA BUSCAR SIMILIITUDES
+			$filtro = strtolower($filtro);
 			$filtro = "%".$filtro."%";
-			$sentencia = $conexion->prepare("SELECT email, nombre, tipo FROM usuarios WHERE email LIKE LOWER(?) OR LOWER(nombre) LIKE LOWER(?) ORDER BY email");
+			$sentencia = $conexion->prepare("SELECT email, nombre, tipo FROM usuarios WHERE email LIKE ? OR LOWER(nombre) LIKE ? ORDER BY email");
 			$sentencia->bind_param("ss", $filtro, $filtro);
-			if (!$sentencia->execute() or $sentencia->num_rows <= 0) return False;
-			else {
-				while ($fila = $resultado->fetch_assoc()) {
+			if (!$sentencia->execute() or $sentencia->num_rows <= 0) {
+				$conexion->close();
+				return False;
+			} else {
+				while ($fila = $resultado->fetch_assoc()) { // RECORRER EL RESULTADO E IR AÑADIENDO LAS FILAS AL ARRAY $usuarios
 					$usuarios[] = $fila;
 				}
+				$conexion->close();
 				return $usuarios;
 			}
 		}
 	}
-	function crear_usuario($email, $password, $nombre, $tipo, $ubicaciones = NULL) {
+		function crear_usuario($email, $password, $nombre, $tipo, $ubicaciones = NULL) {
 		$password = md5($password); // CIFRAR CONTRASEÑA
 		if (empty($nombre)) $nombre = null;
-		else $nombre = ucwords($nombre); //
+		else $nombre = ucwords($nombre);
 		$conexion = conexion_database();
 		// $transaccion = True;
 		// $conexion->autocommit(false);
@@ -81,101 +96,105 @@
 		$sentencia->bind_param("ssss", $email, $password, $nombre, $tipo);
 		if (!$sentencia->execute() or $sentencia->affected_rows == 0)	return false;
 		else return True;
-		// if (is_array($ubicaciones)) {
-		// 	$sentencia = $conexion->prepare("INSERT INTO gestiona VALUES(UPPER(?), LOWER(?))");
-		// 	foreach ($ubicaciones as $ubicacion) {
-		// 		$sentencia->bind_param("ss", $ubicacion, $email);
 				if (!$sentencia->execute() or $sentencia->affected_rows == 0) $transaccion = False;
 		// 	}
 		// }
 	}
-	function borrar_usuario($email) {
-		$conexion = conexion_database();
-		$sentencia = $conexion->prepare("DELETE FROM usuarios WHERE LOWER(email) = LOWER(?)");
-		$sentencia->bind_param("s", $email);
-		if (!$sentencia->execute() or $sentencia->affected_rows == 0) return False;
-		else return True;
-	}
-	function modificar_usuario($email, $nombre, $tipo) {
-		if (empty($nombre)) $nombre = null;
-		else $nombre = ucwords($nombre);
-		$tipo = strtolower($tipo);
-		$email = strtolower($email);
-		$conexion = conexion_database();
-		$sentencia = $conexion->prepare("UPDATE usuarios SET nombre = ?, tipo = ? WHERE email = ?");
-		$sentencia->bind_param("sss", $nombre, $tipo, $email);
-		if (!$sentencia->execute() or $sentencia->affected_rows == 0) return False;
-		else return True;
-	}
-	function modificar_password($email, $password) {
-		$conexion = conexion_database();
-		$password = md5($password);
-		$sentencia = $conexion->prepare("UPDATE usuarios SET password = ? WHERE email = ?");
-		$sentencia->bind_param("ss", $password, $email);
-		if (!$sentencia->execute() or $sentencia->affected_rows == 0) return False;
-		else return True;
-
-	}
-	function ver_ubicaciones_administrador($email) {
-		$email = strtolower($email);
-		$conexion = conexion_database();
-		$sentencia = $conexion->prepare("SELECT codigo, descripcion FROM ubicaciones WHERE codigo IN (SELECT ubicacion FROM gestiona WHERE usuario = ? ) ");
-		$sentencia->bind_param("s", $email);
-		if (!$sentencia->execute()) return False;
-		$resultado = $sentencia->get_result();
-		if ($resultado->num_rows > 0) {
-			while ($fila = $resultado->fetch_assoc()) {
-				$ubicaciones["gestionadas"][] = $fila;
+	/*
+	  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA ELIMINAR UN USUARIO DE LA BASE DE DATOS. UTILIZAR FUNCIÓN strtolower PARA HACERLA NO KEY SENSITIVE
+		RESULTADO: DEVUELVE FALSE SI NO ELIMINA NINGUNA FILA, DEVUELVE TRUE SI ELIMINA FILA.
+	  LLAMADA: ES LLAMADA DESDE eliminar_usuario.php
+	  PARÁMETROS:
+	    - EMAIL: RECIBE UN EMAIL QUE BORRAR
+	*/
+		function borrar_usuario($email) {
+			if (empty($email)) return False;
+			else $email = strtolower($email);
+			$conexion = conexion_database();
+			$sentencia = $conexion->prepare("DELETE FROM usuarios WHERE email = ?");
+			$sentencia->bind_param("s", $email);
+			if (!$sentencia->execute() or $sentencia->affected_rows == 0) { // COMPROBAR QUE HAYA ELIMINADO ALGUNA FILA
+				$conexion->close();
+				return False;
+			}	else {
+				$conexion->close();
+				return True;
 			}
 		}
-		$sentencia = $conexion->prepare("SELECT codigo, descripcion FROM ubicaciones WHERE codigo NOT IN (SELECT ubicacion FROM gestiona WHERE usuario = ? ) ");
-		$sentencia->bind_param("s", $email);
-		if (!$sentencia->execute()) return False;
-		$resultado = $sentencia->get_result();
-		if ($resultado->num_rows > 0) {
-			while ($fila = $resultado->fetch_assoc()) {
-				$ubicaciones["nogestionadas"][] = $fila;
-			}
+		function modificar_usuario($email, $nombre, $tipo) {
+			if (empty($nombre)) $nombre = null;
+			else $nombre = ucwords($nombre);
+			$tipo = strtolower($tipo);
+			$email = strtolower($email);
+			$conexion = conexion_database();
+			$sentencia = $conexion->prepare("UPDATE usuarios SET nombre = ?, tipo = ? WHERE email = ?");
+			$sentencia->bind_param("sss", $nombre, $tipo, $email);
+			if (!$sentencia->execute() or $sentencia->affected_rows == 0) return False;
+			else return True;
 		}
-		return $ubicaciones;
-	}
-	function modificar_ubicaciones_administrador($email, $ubicaciones) {
-		$email = strtolower($email);
-		$conexion = conexion_database();
-		//INICIAR TRANSACCIÓN
-		$transaccion = True;
-		$conexion->autocommit(false);
+		function modificar_password($email, $password) {
+			$conexion = conexion_database();
+			$password = md5($password);
+			$sentencia = $conexion->prepare("UPDATE usuarios SET password = ? WHERE email = ?");
+			$sentencia->bind_param("ss", $password, $email);
+			if (!$sentencia->execute() or $sentencia->affected_rows == 0) return False;
+			else return True;
 
-		//ELIMINAR LAS UBICACIONES QUE GESTIONA. SI NO SE HA PEDIDO AÑADIR PERMISOS SOBRE UNA UBICACIÓN DEVOLVEMOS TRUE
-		$sentencia = $conexion->prepare("DELETE FROM gestiona WHERE usuario = ?");
-		$sentencia->bind_param("s", $email);
-		if (!$sentencia->execute())	return False;
-		elseif ($ubicaciones == "ninguno") {
+		}
+		function ver_ubicaciones_administrador($email) {
+			$email = strtolower($email);
+			$conexion = conexion_database();
+			$sentencia = $conexion->prepare("SELECT codigo, descripcion FROM ubicaciones WHERE codigo IN (SELECT ubicacion FROM gestiona WHERE usuario = ? ) ");
+			$sentencia->bind_param("s", $email);
+			if (!$sentencia->execute()) return False;
+			$resultado = $sentencia->get_result();
+			if ($resultado->num_rows > 0) {
+				while ($fila = $resultado->fetch_assoc()) {
+					$ubicaciones["gestionadas"][] = $fila;
+				}
+			}
+			$sentencia = $conexion->prepare("SELECT codigo, descripcion FROM ubicaciones WHERE codigo NOT IN (SELECT ubicacion FROM gestiona WHERE usuario = ? ) ");
+			$sentencia->bind_param("s", $email);
+			if (!$sentencia->execute()) return False;
+			$resultado = $sentencia->get_result();
+			if ($resultado->num_rows > 0) {
+				while ($fila = $resultado->fetch_assoc()) {
+					$ubicaciones["nogestionadas"][] = $fila;
+				}
+			}
+			return $ubicaciones;
+		}
+		function modificar_ubicaciones_administrador($email, $ubicaciones) {
+			$email = strtolower($email);
+			$conexion = conexion_database();
+			//INICIAR TRANSACCIÓN
+			$transaccion = True;
+			$conexion->autocommit(false);
+
+			//ELIMINAR LAS UBICACIONES QUE GESTIONA. SI NO SE HA PEDIDO AÑADIR PERMISOS SOBRE UNA UBICACIÓN DEVOLVEMOS TRUE
+			$sentencia = $conexion->prepare("DELETE FROM gestiona WHERE usuario = ?");
+			$sentencia->bind_param("s", $email);
+			if (!$sentencia->execute())	return False;
+			elseif ($ubicaciones == "ninguno") {
+				$conexion->commit();
+				return True;
+			}
+			//PREPARAR LA SENTENCIA INSERT Y VINCULAR LAS VARIABLES, GANANDO EFICIENCIA EN CASO DE REALIZAR MUCHOS INSERTS
+			$sentencia = $conexion->prepare("INSERT INTO gestiona VALUES (? , ?)");
+			$sentencia->bind_param("ss", $indice, $email);
+
+			//RECORRER EL ARRAY DE UBICACIONES, SI UNA INSERCIÓN FALLA HACEMOS ROLLBACK Y DEVOLVEMOS FALSE
+			foreach ($ubicaciones as $indice) {
+				if (!$sentencia->execute()) {
+					$conexion->rollback();
+					return False;
+				}
+			}
+			//SI LA EJECUCIÓN DEL PROGRAMA HA LLEGADO HASTA AQUÍ CONFIRMAMOS LA EJECUCIÓN Y DEVOLVEMOS True
 			$conexion->commit();
 			return True;
 		}
-		//PREPARAR LA SENTENCIA INSERT Y VINCULAR LAS VARIABLES, GANANDO EFICIENCIA EN CASO DE REALIZAR MUCHOS INSERTS
-		$sentencia = $conexion->prepare("INSERT INTO gestiona VALUES (? , ?)");
-		$sentencia->bind_param("ss", $indice, $email);
 
-		//RECORRER EL ARRAY DE UBICACIONES, SI UNA INSERCIÓN FALLA HACEMOS ROLLBACK Y DEVOLVEMOS FALSE
-		foreach ($ubicaciones as $indice) {
-			if (!$sentencia->execute()) {
-				$conexion->rollback();
-				return False;
-			}
-		}
-		//SI LA EJECUCIÓN DEL PROGRAMA HA LLEGADO HASTA AQUÍ CONFIRMAMOS LA EJECUCIÓN Y DEVOLVEMOS True
-		$conexion->commit();
-		return True;
-	}
-	function registrar_evento($fecha, $email, $descripcion, $evento) {
-		$conexion = conexion_database();
-		echo $email."<br>";
-		$sentencia = $conexion->prepare("INSERT INTO logs VALUES (?, LOWER(?), ?, ?)");
-		$sentencia->bind_param("isss", $fecha, $email, $descripcion, $evento);
-		$sentencia->execute();
-	}
 	function crear_ubicacion($codigo, $descripcion, $observaciones) {
 		if (empty($codigo)) return "El código de la ubicación se debe rellenar";
 		elseif (empty($descripcion)) return "La descripción de la ubicación se debe rellenar";
