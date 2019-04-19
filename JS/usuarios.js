@@ -24,50 +24,6 @@ function recargar_usuarios(filtro = "ninguno"){
     $("#contenido_usuarios").html(resultado); //EL RESULTADO DEL SCRIPT PHP SUSTITUYE EL CONTENIDO DE LA TABLA
   });
 }
-/**
-  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA ELIMINAR UN USUARIO MEDIANTE UNA LLAMADA A PHP. TRAS REALIZAR LA ACCIÓN RECARGA LA PÁGINA
-  LLAMADA: ES LLAMADA CUANDO EL USUARIO PULSA EL BOTÓN DE BORRAR USUARIO -> <button onclick='eliminar_usuario(this)'>
-  PARÁMETROS:
-    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN. SERÁ UTILIZADO PARA OBTENER EL EMAIL
-*/
-function eliminar_usuario(elemento){
-  fila = $(elemento).parent().siblings();
-  email = fila[0]['firstChild']['value']; // OBTENER EL EMAIL
-  $.confirm({
-    title: "Eliminar usuario",
-    columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6",
-    content: "¿Estás seguro de eliminar al usuario " + email + "?",
-    buttons: {
-      Eliminar: {
-        btnClass: "btn color_intermedio",
-        action: function () { // TRAS PULSAR EL BOTÓN DE "ELIMINAR" LLAMA AL FICHERO PHP DE ELIMINAR USUARIO
-          $.post("../PHP/AJAX/eliminar_usuario.php",
-          {
-            campo_email: email // PASAR COMO PARÁMETRO EL email
-          },
-          function(resultado) {
-            if (resultado == "CORRECTO") {
-              $.alert({
-                title: "Usuario eliminado",
-                content: "Se ha eliminado correctamente al usuario " + email,
-                columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
-              });
-              recargar_usuarios(); // RECARGAR LA TABLA
-            } else {
-              $.alert({
-                title: "Error",
-                content: "No se ha podido eliminar al usuario. Puede ser que ya no exista. Pruebe a recargar la página",
-                columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
-              });
-            }
-          });
-        }
-      },
-      Cancelar: function () {
-      },
-    }
-  });
-}
 // AL HACER CLICK EN EL BOTÓN DE CREAR USUARIO SE AÑADE UNA FILA A LA TABLA CON UN FORM
 $("#crear_usuario").click(function(){
   $("#contenido_usuarios").append(
@@ -170,7 +126,7 @@ function confirmar_crear_usuario(elemento) {
                 } else {
                   $.alert({
                     title: "ERROR",
-                    content: "No se ha podido crear al usuario. Puede que ya exista. Pruebe a actualizar la página",
+                    content: resultado,
                     columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
                   });
                 }
@@ -196,11 +152,56 @@ function cancelar_nuevo_usuario(elemento) {
   $(fila).remove();
 }
 /**
-  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA COMPROBAR SI UN EMAIL TIENE EL FORMATO CORRECTO MEDIANTE UNA EXPRESIÓN REGULAR
-  RESULTADO: DEVUELVE FALSE SI NO TIENE UN FORMATO CORRECTO O TRUE SI SÍ QUE LO TIENE
-  LLAMADA: ES LLAMADA AL CREAR UN USUARIO.
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA ELIMINAR UN USUARIO MEDIANTE UNA LLAMADA A PHP (eliminar_usuario.php). TRAS REALIZAR LA ACCIÓN RECARGA LA PÁGINA
+  LLAMADA: ES LLAMADA CUANDO EL USUARIO PULSA EL BOTÓN DE BORRAR USUARIO -> <button onclick='eliminar_usuario(this)'>
   PARÁMETROS:
-    - EMAIL: CADENA QUE VALIDAR
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN. SERÁ UTILIZADO PARA OBTENER EL EMAIL
+*/
+function eliminar_usuario(elemento) {
+  var fila, email;
+  fila = $(elemento).parent().siblings();
+  email = fila[0]['firstChild']['value']; // OBTENER EL EMAIL
+  $.confirm({
+    title: "Eliminar usuario",
+    columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6",
+    content: "¿Estás seguro de eliminar al usuario " + email + "?",
+    buttons: {
+      Eliminar: {
+        btnClass: "btn color_intermedio",
+        action: function () { // TRAS PULSAR EL BOTÓN DE "ELIMINAR" LLAMA AL FICHERO PHP DE ELIMINAR USUARIO
+          $.post("../PHP/AJAX/eliminar_usuario.php",
+          {
+            campo_email: email // PASAR COMO PARÁMETRO EL email
+          },
+          function(resultado) {
+            if (resultado == "CORRECTO") {
+              $.alert({
+                title: "Usuario eliminado",
+                content: "Se ha eliminado correctamente al usuario " + email,
+                columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+              });
+              recargar_usuarios(); // RECARGAR LA TABLA
+            } else {
+              $.alert({
+                title: "Error",
+                content: resultado,
+                columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+              });
+            }
+          });
+        }
+      },
+      Cancelar: function () {
+      },
+    }
+  });
+}
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CONVERTIR UNA FILA DE LA TABLA USUARIOS EN MODIFICABLE
+  RESULTADO: NO DEVUELVE NINGÚN VALOR
+  LLAMADA: ES LLAMADA AL PULSAR SOBRE EL BOTÓN DE MODIFICAR USUARIO<button onclick='modificar_usuario(this)'
+  PARÁMETROS:
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
 */
 function modificar_usuario(elemento) {
   var fila, botones, nombre, tipo;
@@ -218,14 +219,20 @@ function modificar_usuario(elemento) {
     "<button onclick='cancelar_modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Cancelar'><i class='fas fa-times'></i></button>"
   );
 }
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA RECOGER LOS DATOS DE LA MODIFICACIÓN DE UN USUARIO Y LLAMAR AL SCRIPT PHP (modificar_usuario.php) QUE LO MODIFIQUE.
+  LLAMADA: ES LLAMADA AL HACER CLICK EN EL BOTÓN DE CONFIRMAR MODIFICACIÓN DEL USUARIO.
+  PARÁMETROS:
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
+*/
 function confirmar_modificar_usuario(elemento) {
   var fila, email, nombre, tipo;
-  // CAMBIAR LOS INPUTS nombre Y tipo A EDITABLES
+  // OBTENER LOS DATOS
   fila = $(elemento).parent().siblings();
   email = fila[0]['firstChild']['value'];
   nombre = fila[1]['firstChild']['value'];
   tipo = fila[2]['children'][0]['value'];
-  $.post("../PHP/AJAX/modificar_usuario.php",
+  $.post("../PHP/AJAX/modificar_usuario.php", // LLAMAR AL SCRIPT PHP CON LOS DATOS RECOGIDOS
   {
     campo_email: email,
     campo_nombre: nombre,
@@ -233,13 +240,28 @@ function confirmar_modificar_usuario(elemento) {
   },
   function(resultado) {
     if (resultado == "CORRECTO") {
-      $.alert("Se ha modificado correctamente al usuario " + email);
+      $.alert({
+        title: "USUARIO MODIFICADO",
+        content: "Se ha modificado correctamente al usuario " + email,
+        columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+      });
       recargar_usuarios();
     } else {
-      $.alert(resultado);
+      $.alert({
+        title: "ERROR",
+        content: resultado,
+        columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+      });
     }
   });
 }
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA VOLVER A HACER LA FILA DE LA TABLA USUARIOS NO MODIFICABLE
+  LLAMADA: ES LLAMADA AL HACER CLICK EN EL BOTÓN DE CANCELAR LA MODIFICACIÓN DE UN USUARIO <button onclick='cancelar_modificar_usuario(this)'
+  RESULTADO: NO DEVUELVE NINGÚN VALOR
+  PARÁMETROS:
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
+*/
 function cancelar_modificar_usuario(elemento) {
   var botones, fila, tipo;
   // CAMBIAR LOS INPUTS A MODO NO EDITABLE
@@ -254,13 +276,18 @@ function cancelar_modificar_usuario(elemento) {
   $(botones).html(
     "<button type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>" +
     "<button onclick='eliminar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar usuario'><i class='fas fa-trash'></i></button>" +
-    "<button onclick='modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar usuario'><i class='fas fa-pen'></i></button>"
+    "<button onclick='modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar usuario'><i class='fas fa-pen'></i></button>" +
+    "<button onclick='modificar_password(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar contraseña'><i class='fas fa-key'></i></button>"
   );
 }
-// AL HACER CLICK EN EL BOTÓN DE CONFIRMAR NUEVO USUARIO SE COMPRUEBA QUE SE HAYA INTRODUCIDO EMAIL Y TENGA UN FORMATO CORRECTO.
-// TAMBIÉN SE SOLICITA CONTRASEÑAS Y SI TODOS LOS DATOS SOLICITADOS SON CORRECTOS SE LLAMA MEDIANTE AJAX A LA FUNCIÓN PHP QUE CREA EL USUARIO
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA SOLICITAR UNA NUEVA CONTRASEÑA Y EJECUTAR EL SCRIPT PHP modificar_password.php PARA MODIFICAR LA CONTRASEÑA DE UN USUARIO.
+  LLAMADA: ES LLAMADA AL HACER CLICK EN EL BOTÓN DE MODIFICAR PASSWORD <button onclick='modificar_password(this)'
+  PARÁMETROS:
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
+*/
 function modificar_password(elemento) {
-  var fila, email;
+  var fila, email, password_1, password_2;
   // ALMACENAR EL EMAIL PARA SABER QUÉ USUARIO DEBEMOS MODIFICAR LA PASSWORD
   fila = $(elemento).parent().siblings();
   email = fila[0]['firstChild']['value'];
@@ -280,15 +307,23 @@ function modificar_password(elemento) {
       Modificar: {
         btnClass: "btn color_intermedio",
         action: function () {
-          var password_1 = $("#campo_password_1").val();
-          var password_2 = $("#campo_password_2").val();
+          password_1 = $("#campo_password_1").val();
+          password_2 = $("#campo_password_2").val();
           // COMPROBAR QUE SE HAYAN INTRODUCIDO AMBAS
           if (!password_1 || !password_2) {
-              $.alert("Debes rellenar ambos campos.");
-              return false;
+            $.alert({
+              title: "ERROR",
+              content: "Debes de rellenar ambos campos.",
+              columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+            });
+            return false;
           // COMPROBAR QUE SEAN IGUALES
           } else if (password_1 != password_2) {
-            $.alert("Las contraseñas deben coincidir.");
+            $.alert({
+              title: "ERROR",
+              content: "Las contraseñas deben de coincidir.",
+              columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+            });
             return false;
           } else {
             $.post("../PHP/AJAX/modificar_password.php",
@@ -298,9 +333,17 @@ function modificar_password(elemento) {
             },
             function(resultado) {
               if (resultado == "CORRECTO") {
-                $.alert("Se ha modificado correctamente la contraseña del usuario " + email);
+                $.alert({
+                  title: "ERROR",
+                  content: "Se ha modificado correctamente la contraseña del usuario " + email + " y se le ha notificado por correo",
+                  columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+                });
               } else {
-                $.alert(resultado);
+                $.alert({
+                  title: "ERROR",
+                  content: resultado,
+                  columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+                });
               }
             });
           }
@@ -312,9 +355,13 @@ function modificar_password(elemento) {
   });
 
 }
-$("#prueba").click(function(){
-  alert("hola");
-});
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA MODIFICAR LAS UBICACIONES QUE PUEDE GESTIONAR UN USUARIO. INTERACTÚA CON DOS SCRIPTS PHP:
+               ver_ubicaciones_administrador.php para cargar las ubicaciones y modificar_ubicaciones_administrador.php para realizar los cambios.
+  LLAMADA: ES LLAMADA AL HACER CLICK EN EL BOTÓN DE VER UBICACIONES PASSWORD <button onclick='ver_ubicaciones(this)'
+  PARÁMETROS:
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
+*/
 function ver_ubicaciones(elemento) {
   var fila, email, ubicaciones_seleccionadas, ubicaciones_array;
   // ALMACENAR EL EMAIL PARA SABER QUÉ USUARIO DEBEMOS MOSTRAR SUS UBICACIONES
@@ -327,16 +374,15 @@ function ver_ubicaciones(elemento) {
     campo_email: email
   },
   function(resultado) {
-
     $.confirm({
       title: "Ubicaciones del usuario " + email + ": ",
       columnClass: "col-sm-12 col-md-12 col-lg-12 col-xl-6",
-      content: resultado,
+      content: resultado, // MOSTRAR LAS UBICACIONES CARGADAS DESDE EL SCRIPT PHP
       buttons: {
         Guardar_cambios: {
           btnClass: "btn color_intermedio",
           action: function () {
-            // GUARDAMOS EN LA VAR ubicaciones_seleccionadas LAS UBICACIONES SELECCIONADAS
+            // GUARDAMOS EN LA VAR ubicaciones_seleccionadas LAS UBICACIONES QUE EL USUARIO VA A GESTIONAR
             ubicaciones_seleccionadas = $("#lista_ubicaciones_seleccionadas").children();
             if (ubicaciones_seleccionadas.length == 0) {
               ubicaciones_array = "ninguno";
@@ -346,6 +392,7 @@ function ver_ubicaciones(elemento) {
                 ubicaciones_array[i] = $(ubicaciones_seleccionadas[i]).attr("id");
               }
             }
+            // MODIFICAR POR AJAX LAS LOCALIZACIONES QUE EL USUARIO PUEDE GESTIONA
             $.post("../PHP/AJAX/modificar_ubicaciones_administrador.php",
             {
               campo_email: email,
@@ -379,5 +426,4 @@ function add_ubicacion(elemento) {
   descripcion = $("#" + codigo).text();
   $("#lista_ubicaciones_seleccionadas").append("<li onclick='eliminar_ubicacion(this)' class='list-group-item' id='" + codigo + "'>" + descripcion + "</li>")
   $("#" + codigo).remove();
-
 }

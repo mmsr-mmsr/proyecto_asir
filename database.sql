@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS gestiona (
 CREATE TABLE IF NOT EXISTS logs (
 	fecha INT,
 	usuario VARCHAR(30),
-	descripcion VARCHAR(100) NOT NULL,
+	descripcion VARCHAR(400) NOT NULL,
 	tipo VARCHAR(5) NOT NULL,
 	CONSTRAINT logs_pk PRIMARY KEY (fecha, usuario)
 ) ENGINE = InnoDB;

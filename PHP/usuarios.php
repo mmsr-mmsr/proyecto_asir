@@ -32,7 +32,10 @@
 <?php
 	echo imprimir_cabecera("usuarios");
 	$resultado_usuarios = ver_usuarios();
-	if ($resultado_usuarios !== False) {
+	if ($resultado_usuarios === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Compruebe que el servicio esté funcionando correctamente. Pruebe a conectarse más tarde.";
+	elseif ($resultado_usuarios === "NO USUARIOS") echo "No se ha encontrado ningún usuario con el partón de búsqueda introducido";
+	elseif ($resultado_usuarios === "FALLO CONSULTA") echo "Se ha producido un error al conectarse a la BD. Pruebe a actualizar la página.";
+	else {
 ?>
 <div class="col-xl-10 col-lg-12 offset-xl-1">
 	<button id="crear_usuario" type="button" class="btn color_intermedio">Crear Usuario</button>
