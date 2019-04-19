@@ -357,8 +357,9 @@ function modificar_password(elemento) {
 }
 /**
   DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA MODIFICAR LAS UBICACIONES QUE PUEDE GESTIONAR UN USUARIO. INTERACTÚA CON DOS SCRIPTS PHP:
-               ver_ubicaciones_administrador.php para cargar las ubicaciones y modificar_ubicaciones_administrador.php para realizar los cambios.
-  LLAMADA: ES LLAMADA AL HACER CLICK EN EL BOTÓN DE VER UBICACIONES PASSWORD <button onclick='ver_ubicaciones(this)'
+               ver_ubicaciones_administrador.php para cargar las ubicaciones y modificar_ubicaciones_administrador.php para realizar los cambios efectuados.
+               UTILIZA LAS FUNCIONES JS eliminar_ubicacion Y add_ubicacion PARA QUE EL USUARIO PUEDA INTERACTUAR CON LAS UBICACIONES (AÑADIR Y QUITAR)
+  LLAMADA: ES LLAMADA AL HACER CLICK EN EL BOTÓN DE VER UBICACIONES <button onclick='ver_ubicaciones(this)'
   PARÁMETROS:
     - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
 */
@@ -400,9 +401,17 @@ function ver_ubicaciones(elemento) {
             },
             function(resultado) {
               if (resultado == "CORRECTO") {
-                $.alert("Se ha modificado correctamente las ubicaciones que gestiona el usuario " + email);
+                $.alert({
+                  title: "USUARIO MODIFICADO",
+                  content: "Se ha modificado correctamente las ubicaciones que gestiona el usuario " + email,
+                  columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+                });
               } else {
-                $.alert("Se ha producido un error al intentar modificar las ubicaciones que gestiona el usuario " + email);
+                $.alert({
+                  title: "ERROR",
+                  content: "resultado",
+                  columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+                });
               }
             });
           }
@@ -413,17 +422,29 @@ function ver_ubicaciones(elemento) {
     });
   });
 }
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA ELIMINAR UNA UBICACIÓN DE LA LISTA DE UBICACIONES GESTIONADAS POR EL USUARIO.
+  LLAMADA: ES LLAMADA AL HACER CLICK SOBRE UNA UBICACIÓN SELECCIONADA
+  PARÁMETROS:
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
+*/
 function eliminar_ubicacion(elemento) {
   var codigo, descripcion;
-  codigo = $(elemento).attr("id");
-  descripcion = $(elemento).text();
-  $("#lista_ubicaciones_seleccionables").append("<option id='" + codigo + "' value='" + codigo + "'>" + descripcion + "</option>")
-  $(elemento).remove();
+  codigo = $(elemento).attr("id"); // OBTENER EL ID (código de la ubicación)
+  descripcion = $(elemento).text(); // OBTENER EL TEXTO (descripción de la ubicación)
+  $("#lista_ubicaciones_seleccionables").append("<option id='" + codigo + "' value='" + codigo + "'>" + descripcion + "</option>"); // AÑADIR LA UBICACIÓN A LA LISTA DE UBICACIONES SELECCIONABLES
+  $(elemento).remove(); // ELIMINAR LA UBICACIÓN DE LAS UBICACIONES SELECCIONADAS
 }
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA AÑADIR UNA UBICACIÓN A LA LISTA DE UBICACIONES GESTIONADAS POR EL USUARIO.
+  LLAMADA: ES LLAMADA AL HACER CLICK SOBRE UNA UBICACIÓN DE LA LISTA DE UBICACIONES DISPONIBLES PARA AÑADIR
+  PARÁMETROS:
+    - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
+*/
 function add_ubicacion(elemento) {
   var codigo, descripcion;
-  codigo = $(elemento).val();
-  descripcion = $("#" + codigo).text();
-  $("#lista_ubicaciones_seleccionadas").append("<li onclick='eliminar_ubicacion(this)' class='list-group-item' id='" + codigo + "'>" + descripcion + "</li>")
-  $("#" + codigo).remove();
+  codigo = $(elemento).val(); // OBTENER CÓDIGO DE LA UBICACIÓN
+  descripcion = $("#" + codigo).text(); // OBTENER DESCRIPCIÓN DE LA UBICACIÓN
+  $("#lista_ubicaciones_seleccionadas").append("<li onclick='eliminar_ubicacion(this)' class='list-group-item' id='" + codigo + "'>" + descripcion + "</li>"); // AÑADIR A LA UBICACIÓN A LA LISTA DE UBICACIONES SELECCIONADAS
+  $("#" + codigo).remove(); // ELIMINAR LA UBICACIÓN DE LAS UBICACIONES SELECCIONABLES
 }

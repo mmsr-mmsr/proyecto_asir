@@ -4,7 +4,7 @@
 		RESULTADO: DEVUELVE HTML EN FUNCIÓN DEL RESULTADO DE LA CONSULTA EN LA BD
 		LLAMADA: ES LLAMADA DESDE LA FUNCIÓN DE JAVASCRIPT confirmar_crear_usuario
 		PARÁMETROS:
-			- $_POST['email']: EMAIL DEL USUARIO.
+			- $_POST['campo_email']: EMAIL DEL USUARIO.
 	*/
 	session_start();
 	include "../funciones.php";

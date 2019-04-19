@@ -1,36 +1,81 @@
 <?php
 	session_start();
 	include "funciones.php";
-	if (isset($_POST['cerrar_sesion'])) cerrar_sesion();
-	/* *** INICIO DE BLOQUE COMÚN A TODAS LAS PÁGINAS WEB DE LA APLICACIÓN PARA CONTROLAR EL INICIO DE SESIÓN.
-	EN ESTA PÁGINA DIFIERE PORQUE SI YA SE HA HECHO LOGIN CORRECTO EN LA PÁGINA SE REDIRIGE A OTRO (NO TENDRÍA SENTIDO VOLVER A MOSTRAR EL FORMULARIO DE INICIO),
-	EN EL RESTO SE PERMITIRÁ VER EL CONTENIDO Y EN CASO DE NO HABER HECHO LOGIN SE REDIRIGIRÁ AQUÍ *** */
-	/*1- SE COMPRUEBA SI HAY UNA SESIÓN INICIADA. EN CASO AFIRMATIVO SE PERMITE LA VISUALIZACIÓN DE LA PÁGINA
-			(O REDIRIGIR A /PHP/menu.php EN CASO DE SER /PHP/index.php)*/
-	if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo'])) $variable = null;
-
-	/*2- SE COMPRUEBA SI HAY COOKIES ALMACENADAS CON CREDENCIALES, EN TAL CASO SE VALIDAN EN LA DATABASE Y SI SON CORRECTOS
-			SE CREA SESIÓN Y SE PERMITE LA VISUALIZACIÓN DE LA PÁGINA (O REDIRIGIR A /PHP/menu.php EN CASO DE SER /PHP/index.php)*/
+	/* *** BLOQUE DE CÓDIGO DE CONTROL SOBRE LA SESIÓN. IGUAL AL DE LOGS YA QUE SOLO USUARIOS ADMIN PODRÁN ACCEDER. DIFIERE DEL RESTO. *** */
+	/* 1- SE COMPRUEBA SI HAY UNA SESIÓN INICIADA. EN CASO AFIRMATIVO SE COMPRUEBA EL TIPO DE USUARIO. SI NO ES ADMINISTRADOR SE REDIRIGE A UBICACIONES.PHP*/
+	if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo'])) {
+		if ($_SESSION['tipo'] !== "administrador") header('Location: /PHP/ubicaciones.php');
+	}
+	
+	/* 2- SE COMPRUEBA SI HAY COOKIES ALMACENADAS CON CREDENCIALES, EN TAL CASO SE VALIDAN EN LA DATABASE. SI SON ERRÓNEAS SE ELIMINAN Y SE REDIRIGEN A index.php*/
 	elseif (isset($_COOKIE['email']) and isset($_COOKIE['password'])) {
-			$resultado_validacion = validar_login($_COOKIE['email'], $_COOKIE['password']);
-			if (is_array($resultado_validacion)) {
-					$_SESSION['email'] = $_COOKIE['email'];
-					$_SESSION['password'] = $_COOKIE['password'];
-					$_SESSION['tipo'] = $resultado_validacion['tipo'];
-					registrar_evento(time(), $_SESSION['email'], "Login realizado correctamente", "login");
-
-			} else {
-					//SI LAS CREDENCIALES ALMACENADAS NO SON CORRECTAS (HAN CAMBIADO EN LA DATABASE O EL USUARIO YA NO EXISTE), LAS BORRAMOS
-					setcookie("email", "", time() - 1, "/");
-					setcookie("password", "", time() - 1, "/");
-					header('Location: /PHP/index.php');
-			}
-	} else header('Location: /PHP/index.php');
-
-	if ($_SESSION['tipo'] != "administrador") header('Location: /PHP/menu.php');
+		$resultado_validacion = validar_login($_COOKIE['email'], $_COOKIE['password']);
+		if ($resultado_validacion === True)	{
+			if ($_SESSION['tipo'] !== "administrador") header('Location: /PHP/ubicaciones.php'); // SI EL USUARIO NO ES ADMINISTRADOR SE LE REDIRIGE
+		} else {
+			setcookie("email", "", time() - 1, "/");
+			setcookie("password", "", time() - 1, "/");
+			header('Location: /PHP/index.php');
+		}
+	/* SI NO HA SE HA VALIDADO MEDIANTE LA SESIÓN NI COOKIES SE LE REDIRIGE */
+	} else header('Location: /PHP/ubicaciones.php');
+	/* *** FIN DE BLOQUE *** */
 ?>
+<!DOCTYPE html>
+<html>
+<head>
+	<title>USUARIOS | IES SERRA PERENXISA</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<link rel="icon" type="image/jpg" href="../IMG/logo1.jpg">
+	<!-- hojas de estilos -->
+	<link rel="stylesheet" href="../CSS/bootstrap.css">
+	<link rel="stylesheet" href="../CSS/estilos.css">
+	<link rel="stylesheet" href="../CSS/iconos.css">
+	<link rel="stylesheet" href="../CSS/jquery-confirm.min.css">
+</head>
+<body>
+	<div>
+		<nav class="mb-1 navbar navbar-expand-lg color_fuerte">
+			<a class="navbar-brand" href="../PHP/index.php">
+				<img src="../IMG/logo2.png" height="70" id="logo2" class="d-inline-block align-middle rounded" alt="Serra Perenxisa">
+			</a>
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent-555" aria-controls="navbarSupportedContent-555" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div class="collapse navbar-collapse" id="navbarSupportedContent-555">
+				<ul class="navbar-nav mr-auto">
+					<li class="nav-item">
+						<a id="articulos" class="nav-link" href="/PHP/articulos.php">Artículos</a>
+					</li>
+					<li class="nav-item">
+						<a id="logs" class="nav-link" href="/PHP/logs.php">Logs</a>
+					</li>
+					<li class="nav-item">
+						<a id="ubicaciones" class="nav-link" href="/PHP/ubicaciones.php">Ubicaciones</a>
+					</li>
+					<li class="nav-item">
+						<a id="usuarios" class="nav-link" href="/PHP/usuarios.php">Usuarios</a>
+					</li>
+				</ul>
+				<ul class="navbar-nav ml-auto nav-flex-icons">
+					<li class="nav-item avatar dropdown">
+						<a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink-55" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+							<?php echo $_SESSION['email'];?>
+						</a>
+						<div class="dropdown-menu dropdown-menu-right dropdown-secondary" aria-labelledby="navbarDropdownMenuLink-55">
+							<a class="dropdown-item" href="/PHP/logout.php">Cerrar sesión</a>
+						</div>
+					</li>
+				</ul>
+			</div>
+		</nav>
+
+<!--/.Navbar -->
+<div class="container">
+<a href="../PHP/index.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
+</div>
 <?php
-	echo imprimir_cabecera("usuarios");
 	$resultado_usuarios = ver_usuarios();
 	if ($resultado_usuarios === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Compruebe que el servicio esté funcionando correctamente. Pruebe a conectarse más tarde.";
 	elseif ($resultado_usuarios === "NO USUARIOS") echo "No se ha encontrado ningún usuario con el partón de búsqueda introducido";
@@ -83,13 +128,6 @@
 <script src="../JS/jquery-confirm.min.js"></script>
 <script src="../JS/popper.min.js"></script>
 <script src="../JS/bootstrap.min.js"></script>
-<script type="text/javascript">
-	window.onload = resaltar_actual;
-	function resaltar_actual() {
-		var pagina_activa = document.getElementById('usuarios');
-		pagina_activa.className += " pagina_activa";
-	}
-</script>
 <script>
 	$(document).ready(function(){
 			$('[data-toggle="tooltip"]').tooltip();

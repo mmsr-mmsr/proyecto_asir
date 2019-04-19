@@ -12,7 +12,7 @@
   if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo']) and $_SESSION['tipo'] == "administrador") {
 				$resultado_modificacion = modificar_ubicaciones_administrador($_POST['campo_email'], $_POST['campo_ubicaciones']);
 				if ($resultado_modificacion === True) echo "CORRECTO";
-				else echo "FALLO";
-			}
+				elseif ($resultado_modificacion === "FALLO CONSULTA") echo "Se ha producido un error al ejecutar la modificación. Pruebe a intentarlo de nuevo.";
+				elseif ($resultado_modificacion === "ERROR EN LA BD") echo "Se ha producido un error al conectar con la BD. Compruebe que el servicio está funcionando correcamente.";
   } else header('Location: /PHP/index.php');
 ?>

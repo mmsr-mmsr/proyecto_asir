@@ -2,10 +2,9 @@
 	use PHPMailer\PHPMailer\PHPMailer;
 	use PHPMailer\PHPMailer\Exception;
 	/*
-	DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CONECTARSE A LA BASE DE DATOS. ENVÍA UN CORREO EN CASO DE FALLAR LA BD.
-	RESULTADO: DEVUELVE LA CONEXIÓN CREADA CON LA BASE DE DATOS O FALSE SI NO HA SIDO POSIBLE CONECTARSE.
-	LLAMADA: ES LLAMADA CADA VEZ QUE SE QUIERE INTERACTUAR CON LA BASE DE DATOS.
-	-
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CONECTARSE A LA BASE DE DATOS. ENVÍA UN CORREO EN CASO DE FALLAR LA BD.
+		RESULTADO: DEVUELVE LA CONEXIÓN CREADA CON LA BASE DE DATOS O FALSE SI NO HA SIDO POSIBLE CONECTARSE.
+		LLAMADA: ES LLAMADA CADA VEZ QUE SE QUIERE INTERACTUAR CON LA BASE DE DATOS.
 	*/
 	function conexion_database() {
 		$conexion = @new mysqli("localhost", "inventario", "inventario", "inventario");
@@ -37,17 +36,56 @@
 		$mail->AltBody = $contenido;
 		$mail->send();
 	}
-	function validar_login($email, $password) {
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA VALIDAR LAS CREDENCIALES DE UN USUARIO. DEVUELVE TRUE SI SON CORRECTAS O UNA STRING SI ALGO FALLA. SE ENCARGA DE FIJAR LA SESIÓN Y PERMITE FIJAR COOKIES
+		RESULTADO: DEVUELVE LA CONEXIÓN CREADA CON LA BASE DE DATOS O FALSE SI NO HA SIDO POSIBLE CONECTARSE.
+		LLAMADA: ES LLAMADA CADA VEZ QUE SE ACCEDE A LA WEB Y NO HAYA UNA SESIÓN INICIADA
+		PARAMÉTROS:
+			- EMAIL: EMAIL DEL USUARIO A VALIDAR. NO NULL
+			- PASSWORD: PASSWORD DEL USUARIO A VALIDAR. *** LA CONTRASEÑA DEBE SER PASADA CIFRADA ***. NO NULL
+			- COOKIES: INDICA SI SE HAN DE ESTABLECER COOKIES O NO. SI NO SE PASA ESTE PARÁMETRO TOMA EL VALOR "N"
+	*/
+	function validar_login($email, $password, $cookies = "N") {
+		// VALIDAR DATOS
+		if (empty($email)) return "El campo correo es obligatorio.";
+		else $email = strtolower($email); // CONVERTIR EMAIL A MINÚSCULAS
+		if (empty($password)) return "El campo contraseña es obligatorio.";
+		// CONEXIÓN CON LA BD
 		$conexion = conexion_database();
-		$sentencia = $conexion->prepare("SELECT password, tipo FROM usuarios WHERE email = LOWER(?)");
+		if ($conexion === False) return "Se ha producido un error en el servidor. Prueba a acceder más tarde."; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$sentencia = $conexion->prepare("SELECT password, tipo FROM usuarios WHERE email = ?");
 		$sentencia->bind_param("s", $email);
-		if (!$sentencia->execute()) echo "ERRROOOOOR";
-		$resultado = $sentencia->get_result();
-		//echo "ERROR: ".$resultado->num_rows;
-		if ($resultado->num_rows == 0) return "El usuario no existe";
-		$resultado = $resultado->fetch_assoc();
-		if ($resultado['password'] != md5($password)) return "La contraseña no es correcta";
-		else return array('tipo' => $resultado['tipo']);
+		// COMPROBAR QUE SE HAYA PODIDO EJECUTAR LA SENTENCIA
+		if (!$sentencia->execute()) {
+			$conexion->close();
+			registrar_evento(time(), $email, "Se ha producido un error al intentar al ejecutar la query SELECT password, tipo FROM usuarios WHERE email = '".$email."' desde la función validar_login()", "error"); // ANOTAR EVENTO EN LA BD
+			return "No se ha podido iniciar sesión. Prueba a intentario de nuevo.";
+		}	else $resultado = $sentencia->get_result();
+		// COMPROBAR QUE HAYA DEVUELTO FILAS, SI NO DEVUELVE FILAS INFORMAMOS DE QUE EL USUARIO NO EXISTE
+		if ($resultado->num_rows == 0) {
+			$conexion->close();
+			registrar_evento(time(), $email, "Se ha intentado iniciar sesión con un usuario inexistente en la Base de Datos", "login");
+			return "El usuario introducido no existe. Comprueba que lo hayas escrito correctamente. Avisa al administrador del centro si necesitas un usuario.";
+		} else $resultado = $resultado->fetch_assoc();
+		// COMPROBAR QUE LA CONTRASEÑA SEA CORRECTA
+		if ($resultado['password'] != md5($password)) {
+			$conexion->close();
+			registrar_evento(time(), $email, "Se ha intentado iniciar sesión con unas credenciales incorrectas", "login");
+			return "La contraseña introducida no es correcta. Si no te acuerdas pídele al Administrador que te la restablezca.";
+		// CREDENCIALES CORRECTAS
+		} else {
+			registrar_evento(time(), $email, "Se ha logueado correctamente en la aplicación.", "login"); // ANOTAR LOGIN
+			// ESTABLECER SESIÓN
+			$_SESSION['email'] = $email;
+			$_SESSION['password'] = $password;
+			$_SESSION['tipo'] = $resultado['tipo'];
+			// ESTABLECER COOKIES CON UNA DURACIÓN DE 15 DÍAS
+			if ($cookies === "S") {
+				setcookie("email", $email, time() + 60 * 60 * 24 * 15, "/");
+				setcookie("password", $password, time() + 60 * 60 * 24 * 15, "/");
+			}
+			return True;
+		}
 	}
 	function cerrar_sesion() {
 		if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo'])) session_destroy();
@@ -340,111 +378,4 @@
 		$conexion->commit();
 		return True;
 	}
-
-function crear_ubicacion($codigo, $descripcion, $observaciones) {
-if (empty($codigo)) return "El código de la ubicación se debe rellenar";
-elseif (empty($descripcion)) return "La descripción de la ubicación se debe rellenar";
-elseif (strlen($codigo) != 4) return "El código debe ser de 4 dígitos";
-elseif (empty($observaciones)) $observaciones = null;
-
-$conexion = conexion_database();
-$sentencia = $conexion->prepare("INSERT INTO ubicaciones VALUES (UPPER(?), ?, ?)");
-$sentencia->bind_param("sss", $codigo, $descripcion, $observaciones);
-if (!$sentencia->execute() or $sentencia->affected_rows == 0) {
-if ($conexion->errno == 1062) return "El código introducido ya se está utilizando";
-else return False;
-} else return True;
-}
-function elimina_ubicacion($codigo, $confirmacion = null) {
-$conexion = conexion_database();
-$sentencia = $conexion->prepare("SELECT codigo FROM ubicaciones WHERE codigo = UPPER(?)");
-$sentencia->bind_param("s", $codigo);
-// $resultado = $sentencia->get_result();
-if (!$sentencia->execute() or $resultado->num_rows == 0) return "La ubicacion que se desea eliminar no existe";
-
-$sentencia = $conexion->prepare("SELECT COUNT(*) FROM stock WHERE ubicacion = UPPER(?)");
-$sentencia->bind_param("s", $codigo);
-if (!$sentencia->execute() or $resultado->num_rows == 0) registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al consultar cuantas dependencias tenia una ubicacion que previamente se había comprobado su existencia", "error");
-}
-function imprimir_cabecera($pagina_activa) {
-?>
-<!DOCTYPE html>
-<html>
-<head>
-<title>IES SERRA PERENXISA</title>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link rel="icon" type="image/jpg" href="../IMG/logo1.jpg">
-<!-- hojas de estilos -->
-<link rel="stylesheet" href="../CSS/bootstrap.css">
-<link rel="stylesheet" href="../CSS/estilos.css">
-<link rel="stylesheet" href="../CSS/iconos.css">
-<link rel="stylesheet" href="../CSS/jquery-confirm.min.css">
-</head>
-<body>
-<div>
-<nav class="mb-1 navbar navbar-expand-lg color_fuerte">
-<a class="navbar-brand" href="../PHP/index.php">
-<img src="../IMG/logo2.png" height="70" id="logo2" class="d-inline-block align-middle rounded" alt="Serra Perenxisa">
-</a>
-<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent-555" aria-controls="navbarSupportedContent-555" aria-expanded="false" aria-label="Toggle navigation">
-<span class="navbar-toggler-icon"></span>
-</button>
-<div class="collapse navbar-collapse" id="navbarSupportedContent-555">
-<?php
-if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo'])) {
-?>
-<ul class="navbar-nav mr-auto">
-<li class="nav-item">
-<a id="articulos" class="nav-link" href="/PHP/articulos.php">Artículos</a>
-</li>
-<?php
-if ($_SESSION['tipo'] == "administrador") {
-?>
-<li class="nav-item">
-<a id="logs" class="nav-link" href="/PHP/logs.php">Logs</a>
-</li>
-<?php
-}
-?>
-<li class="nav-item">
-<a id="ubicaciones" class="nav-link" href="/PHP/ubicaciones.php">Ubicaciones</a>
-</li>
-<?php
-if ($_SESSION['tipo'] == "administrador") {
-?>
-
-<li class="nav-item">
-<a id="usuarios" class="nav-link" href="/PHP/usuarios.php">Usuarios</a>
-</li>
-<?php
-}
-}
-?>
-</ul>
-<ul class="navbar-nav ml-auto nav-flex-icons">
-<li class="nav-item avatar dropdown">
-<a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink-55" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-<?php
-if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo'])) {
-echo $_SESSION['email'];
-} else {
-echo "No has iniciado sesión";
-}
-?>
-</a>
-<div class="dropdown-menu dropdown-menu-right dropdown-secondary" aria-labelledby="navbarDropdownMenuLink-55">
-<a class="dropdown-item" href="/PHP/logout.php">Cerrar sesión</a>
-</div>
-</li>
-</ul>
-</div>
-</nav>
-
-<!--/.Navbar -->
-<div class="container">
-<a href="../PHP/index.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
-</div>
-<?php
-}
 ?>

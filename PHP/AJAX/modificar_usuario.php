@@ -4,9 +4,9 @@
 		RESULTADO: DEVUELVE HTML EN FUNCIÓN DEL RESULTADO DE LA CONSULTA EN LA BD
 		LLAMADA: ES LLAMADA DESDE LA FUNCIÓN DE JAVASCRIPT confirmar_modificar_usuario
 		PARÁMETROS:
-			- $_POST['email']: EMAIL DEL USUARIO. NO NULL
-			- $_POST['nombre']: NOMBRE DEL USUARIO. NULL
-			- $_POST['tipo']: EMAIL DEL USUARIO. NO NULL
+			- $_POST['campo_email']: EMAIL DEL USUARIO. NO NULL
+			- $_POST['campo_nombre']: NOMBRE DEL USUARIO. NULL
+			- $_POST['campo_tipo']: EMAIL DEL USUARIO. NO NULL
 	*/
 	session_start();
 	include "../funciones.php";
