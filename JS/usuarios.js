@@ -16,7 +16,7 @@ function validar_email(email) {
     - FILTRO: CADENA POR LA QUE FILTRAR EL RESULTADO, SI NO SE LE PASA TOMA EL VALOR = "ninguno"
 */
 function recargar_usuarios(filtro = "ninguno"){
-  $.post("../PHP/AJAX/recargar_usuarios.php",
+  $.post("../PHP/AJAX/USUARIOS/recargar_usuarios.php",
   {
     campo_filtro: filtro
   },
@@ -108,7 +108,7 @@ function confirmar_crear_usuario(elemento) {
               });
               return false;
             } else { // SI TODO ES CORRECTO LLAMA AL SCRIPT PHP
-              $.post("../PHP/AJAX/crear_usuario.php",
+              $.post("../PHP/AJAX/USUARIOS/crear_usuario.php",
               {
                 campo_email: email,
                 campo_password: password_1,
@@ -169,7 +169,7 @@ function eliminar_usuario(elemento) {
       Eliminar: {
         btnClass: "btn color_intermedio",
         action: function () { // TRAS PULSAR EL BOTÓN DE "ELIMINAR" LLAMA AL FICHERO PHP DE ELIMINAR USUARIO
-          $.post("../PHP/AJAX/eliminar_usuario.php",
+          $.post("../PHP/AJAX/USUARIOS/eliminar_usuario.php",
           {
             campo_email: email // PASAR COMO PARÁMETRO EL email
           },
@@ -232,7 +232,7 @@ function confirmar_modificar_usuario(elemento) {
   email = fila[0]['firstChild']['value'];
   nombre = fila[1]['firstChild']['value'];
   tipo = fila[2]['children'][0]['value'];
-  $.post("../PHP/AJAX/modificar_usuario.php", // LLAMAR AL SCRIPT PHP CON LOS DATOS RECOGIDOS
+  $.post("../PHP/AJAX/USUARIOS/modificar_usuario.php", // LLAMAR AL SCRIPT PHP CON LOS DATOS RECOGIDOS
   {
     campo_email: email,
     campo_nombre: nombre,
@@ -326,7 +326,7 @@ function modificar_password(elemento) {
             });
             return false;
           } else {
-            $.post("../PHP/AJAX/modificar_password.php",
+            $.post("../PHP/AJAX/USUARIOS/modificar_password.php",
             {
               campo_email: email,
               campo_password: password_1
@@ -370,7 +370,7 @@ function ver_ubicaciones(elemento) {
   email = fila[0]['firstChild']['value'];
 
   // OBTENER POR AJAX LAS LOCALIZACIONES QUE EL USUARIO PUEDE GESTIONAR
-  $.post("../PHP/AJAX/ver_ubicaciones_administrador.php",
+  $.post("../PHP/AJAX/USUARIOS/ver_ubicaciones_administrador.php",
   {
     campo_email: email
   },
@@ -394,7 +394,7 @@ function ver_ubicaciones(elemento) {
               }
             }
             // MODIFICAR POR AJAX LAS LOCALIZACIONES QUE EL USUARIO PUEDE GESTIONA
-            $.post("../PHP/AJAX/modificar_ubicaciones_administrador.php",
+            $.post("../PHP/AJAX/USUARIOS/modificar_ubicaciones_administrador.php",
             {
               campo_email: email,
               campo_ubicaciones: ubicaciones_array

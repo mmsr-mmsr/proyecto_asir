@@ -7,7 +7,7 @@
 			- $_POST['campo_email']: EMAIL DEL USUARIO.
 	*/
 	session_start();
-	include "../funciones.php";
+	include "../../funciones.php";
   if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo']) and $_SESSION['tipo'] == "administrador") { // COMPROBAR QUE EL USUARIO SEA ADMIN
 		  $resultado_borrado = borrar_usuario($_POST['campo_email']);
       if ($resultado_borrado === True) echo "CORRECTO";

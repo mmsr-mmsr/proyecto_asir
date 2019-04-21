@@ -7,7 +7,7 @@
 			- $_POST['campo_email']: EMAIL DEL USUARIO. NO NULL
 	*/
 	session_start();
-	include "../funciones.php";
+	include "../../funciones.php";
   if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo']) and $_SESSION['tipo'] == "administrador") {
 				$resultado_visualizacion = ver_ubicaciones_administrador($_POST['campo_email']);
 				if ($resultado_visualizacion === "FALLO CONSULTA") echo "Se ha producido un error al ejecutar la modificación. Pruebe a intentarlo de nuevo.";

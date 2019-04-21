@@ -10,7 +10,7 @@
 			- $_POST['campo_tipo']: PRIVILEGIOS DEL USUARIO. NO PUEDE SER NULL
 	*/
 	session_start();
-	include "../funciones.php";
+	include "../../funciones.php";
   if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo']) and $_SESSION['tipo'] == "administrador") { // COMPROBAR QUE SE HAYA INICIADO SESIÓN Y EL USUARIO SEA ADMINISTRADOR
 			  $resultado_creacion = crear_usuario($_POST['campo_email'], $_POST['campo_password'], $_POST['campo_nombre'], $_POST['campo_tipo']);
 	      if ($resultado_creacion === True) echo "CORRECTO";

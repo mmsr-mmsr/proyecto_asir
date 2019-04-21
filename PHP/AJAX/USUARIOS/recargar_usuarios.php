@@ -7,7 +7,7 @@
 			- $_POST['campo_filtro']: PERMITE INDICAR UNA CADENA PARA VISUALIZAR ÚNICAMENTE LOS USUARIOS CUYO NOMBRE O EMAIL COINCIDA CON DICHA CADENA
 	*/
 	session_start();
-	include "../funciones.php";
+	include "../../funciones.php";
   if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo']) and $_SESSION['tipo'] == "administrador") { // COMPROBAR QUE UN USUARIO HAYA INICIADO SESIÓN Y SEA ADMIN
 		$resultado_usuarios = ver_usuarios($_POST['campo_filtro']);
     if ($resultado_usuarios === "ERROR EN LA BD") echo "Se ha producido un error al conectarse con la BD. Compruebe que el servicio está funcionando correctamente.";

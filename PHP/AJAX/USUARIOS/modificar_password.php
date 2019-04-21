@@ -9,7 +9,7 @@
 			- $_POST['campo_tipo']: EMAIL DEL USUARIO. NO NULL
 	*/
 	session_start();
-	include "../funciones.php";
+	include "../../funciones.php";
   if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo']) and $_SESSION['tipo'] == "administrador") {
 		$resultado_modificacion_password = modificar_password($_POST['campo_email'], $_POST['campo_password']);
 		if ($resultado_modificacion_password === True) echo "CORRECTO";
