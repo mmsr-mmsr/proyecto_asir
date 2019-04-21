@@ -67,6 +67,9 @@ table, tr, td, th {
 .nav-link {
 	color: white;
 }
+.nav-tabs .nav-link{
+	color: black;
+}
 .nav-link:hover, .pagina_activa{
 	color: #36d7b7;
 }

@@ -2,29 +2,25 @@
 	session_start();
 	include "funciones.php";
 	/* *** BLOQUE DE CÓDIGO DE CONTROL SOBRE LA SESIÓN. IGUAL AL DE LOGS YA QUE SOLO USUARIOS ADMIN PODRÁN ACCEDER. DIFIERE DEL RESTO. *** */
-	/* 1- SE COMPRUEBA SI HAY UNA SESIÓN INICIADA. EN CASO AFIRMATIVO SE COMPRUEBA EL TIPO DE USUARIO. SI NO ES ADMINISTRADOR SE REDIRIGE A UBICACIONES.PHP*/
+	/* 1- SE COMPRUEBA SI HAY UNA SESIÓN INICIADA. EN CASO AFIRMATIVO SE COMPRUEBA EL TIPO DE USUARIO*/
 	if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo'])) {
-		if ($_SESSION['tipo'] !== "administrador") header('Location: /PHP/ubicaciones.php');
 	}
-
 	/* 2- SE COMPRUEBA SI HAY COOKIES ALMACENADAS CON CREDENCIALES, EN TAL CASO SE VALIDAN EN LA DATABASE. SI SON ERRÓNEAS SE ELIMINAN Y SE REDIRIGEN A index.php*/
 	elseif (isset($_COOKIE['email']) and isset($_COOKIE['password'])) {
 		$resultado_validacion = validar_login($_COOKIE['email'], $_COOKIE['password']);
-		if ($resultado_validacion === True)	{
-			if ($_SESSION['tipo'] !== "administrador") header('Location: /PHP/ubicaciones.php'); // SI EL USUARIO NO ES ADMINISTRADOR SE LE REDIRIGE
-		} else {
+		if ($resultado_validacion !== True) {
 			setcookie("email", "", time() - 1, "/");
 			setcookie("password", "", time() - 1, "/");
 			header('Location: /PHP/index.php');
 		}
 	/* SI NO HA SE HA VALIDADO MEDIANTE LA SESIÓN NI COOKIES SE LE REDIRIGE */
-	} else header('Location: /PHP/ubicaciones.php');
+} else header('Location: /PHP/index.php');
 	/* *** FIN DE BLOQUE *** */
 ?>
 <!DOCTYPE html>
 <html>
 <head>
-	<title>USUARIOS | IES SERRA PERENXISA</title>
+	<title>UBICACIONES | IES SERRA PERENXISA</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 	<link rel="icon" type="image/jpg" href="../IMG/logo1.jpg">
@@ -52,10 +48,10 @@
 						<a id="logs" class="nav-link" href="/PHP/logs.php">Logs</a>
 					</li>
 					<li class="nav-item">
-						<a id="ubicaciones" class="nav-link" href="/PHP/ubicaciones.php">Ubicaciones</a>
+						<a id="ubicaciones" class="nav-link pagina_activa" href="/PHP/ubicaciones.php">Ubicaciones</a>
 					</li>
 					<li class="nav-item">
-						<a id="usuarios" class="nav-link pagina_activa" href="/PHP/usuarios.php">Usuarios</a>
+						<a id="usuarios" class="nav-link" href="/PHP/usuarios.php">Usuarios</a>
 					</li>
 				</ul>
 				<ul class="navbar-nav ml-auto nav-flex-icons">
@@ -73,45 +69,62 @@
 
 <!--/.Navbar -->
 <div class="container">
-<a href="../PHP/index.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
+	<a href="../PHP/index.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
 </div>
 <?php
-	$resultado_usuarios = ver_usuarios();
-	if ($resultado_usuarios === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Compruebe que el servicio esté funcionando correctamente. Pruebe a conectarse más tarde.";
-	elseif ($resultado_usuarios === "NO USUARIOS") echo "No se ha encontrado ningún usuario con el partón de búsqueda introducido";
-	elseif ($resultado_usuarios === "FALLO CONSULTA") echo "Se ha producido un error al conectarse a la BD. Pruebe a actualizar la página.";
+	$resultado_ubicaciones = ver_ubicaciones();
+	if ($resultado_ubicaciones === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Compruebe que el servicio esté funcionando correctamente. Pruebe a conectarse más tarde.";
+	elseif ($resultado_ubicaciones === "NO USUARIOS") echo "No se ha encontrado ningún usuario con el partón de búsqueda introducido";
+	elseif ($resultado_ubicaciones === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos de la BD. Pruebe a actualizar la página.";
 	else {
 ?>
 <div class="col-xl-10 col-lg-12 offset-xl-1">
-	<button id="crear_usuario" type="button" class="btn color_intermedio">Crear Usuario</button>
-	<table id='tabla_usuarios' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
+		<ul class="nav nav-tabs" id="myTab" role="tablist">
+			<li class="nav-item">
+				<button onclick='recargar_ubicaciones()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todas las ubicaciones</button>
+			</li>
+<?php
+			if ($_SESSION['tipo'] === "administrador") {
+				echo "
+				<li class='nav-item'>
+					<button id='crear_ubicacion' type='button' class='btn color_intermedio'>Crear ubicación</button>
+				</li>";
+			}
+			if ($_SESSION['tipo'] === "editor") {
+				echo "
+				<li class='nav-item'>
+					<button onclick='recargar_ubicaciones(\"".$_SESSION['email']."\")' type='button' class='nav-link' id='profile-tab' data-toggle='tab' role='tab' aria-controls='profile' aria-selected='false'>Mis ubicaciones</button>
+				</li>";
+			}
+?>
+			<li class='nav-item'>
+				<button onclick='buscar_ubicaciones()' type='button' class='nav-link' id='search-tab' data-toggle='tab' role='tab' aria-controls='search' aria-selected='false'><i class='fas fa-search'></i></button>
+			</li>
+			<li class="nav-item">
+				<input id="campo_buscar" class='nav-link form-control' type='text' placeholder='Buscar...'>
+			</li>
+		</ul>
+	<table id='tabla_ubicaciones' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
 		<thead class='color_fuerte'>
 			<tr>
-				<th scope='col'>Email</th>
-				<th scope='col'>Nombre</th>
-				<th scope='col'>Tipo</th>
+				<th scope='col'>Código</th>
+				<th scope='col'>Descripción</th>
+				<th scope='col'>Observaciones</th>
 				<th scope='col'>Acciones</th>
 			</tr>
 		</thead>
-		<tbody id="contenido_usuarios">
+		<tbody id="contenido_ubicaciones">
 <?php
-	define("TIPO_USUARIO_SELECCIONADO", " selected");
-	foreach ($resultado_usuarios as $usuario) {
+	foreach ($resultado_ubicaciones as $ubicacion) {
 		echo "
 			<tr>
-				<td><input type='text' name='campo_email' value='".$usuario['email']."' readonly></td>
-				<td><input type='text' name='campo_nombre' value='".$usuario['nombre']."' readonly></td>
-				<td>
-					<select class='custom-select' disabled>
-	          <option value='estandar'"; if ($usuario['tipo'] == "estandar") echo TIPO_USUARIO_SELECCIONADO; echo ">Estándar</option>
-	          <option value='editor'"; if ($usuario['tipo'] == "editor") echo TIPO_USUARIO_SELECCIONADO; echo ">Editor</option>
-	          <option value='administrador'"; if ($usuario['tipo'] == "administrador") echo TIPO_USUARIO_SELECCIONADO; echo ">Administrador</option>
-	        </select>
+				<td><input type='text' name='campo_codigo' value='".$ubicacion['codigo']."' readonly></td>
+				<td><input type='text' name='campo_descripcion' value='".$ubicacion['descripcion']."' readonly></td>
+				<td><input type='text' name='campo_observaciones' value='".$ubicacion['observaciones']."' readonly></td>
 				<td>
 					<button onclick='ver_ubicaciones(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>
-					<button onclick='eliminar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar usuario'><i class='fas fa-trash'></i></button>
-					<button onclick='modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar usuario'><i class='fas fa-pen'></i></button>
-					<button onclick='modificar_password(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar contraseña'><i class='fas fa-key'></i></button>
+					<button onclick='eliminar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar ubicación'><i class='fas fa-trash'></i></button>
+					<button onclick='modificar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar ubicación'><i class='fas fa-pen'></i></button>
 				</td>
 			</tr>
 		";
@@ -129,7 +142,7 @@
 <script src="../JS/popper.min.js"></script>
 <script src="../JS/bootstrap.min.js"></script>
 <script src="../JS/tooltip.js"></script>
-<script src="../JS/usuarios.js"></script>
+<script src="../JS/ubicaciones.js"></script>
 
 </body>
 </html>

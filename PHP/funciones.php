@@ -1,6 +1,8 @@
 <?php
 	use PHPMailer\PHPMailer\PHPMailer;
 	use PHPMailer\PHPMailer\Exception;
+
+	// FUNCIONES GENÉRICAS DE LA APLICACIÓN //
 	/*
 		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CONECTARSE A LA BASE DE DATOS. ENVÍA UN CORREO EN CASO DE FALLAR LA BD.
 		RESULTADO: DEVUELVE LA CONEXIÓN CREADA CON LA BASE DE DATOS O FALSE SI NO HA SIDO POSIBLE CONECTARSE.
@@ -102,12 +104,14 @@
 			$sentencia->execute();
 		}
 	}
+
+	// FUNCIONES  PARA LA GESTIÓN DE USUARIOS //
 	/*
-	DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CARGAR LOS USUARIOS DE LA BASE DE DATOS. PERMITE CARGAR TODOS O APLICAR UN FILTRO
-	RESULTADO: DEVUELVE UN ARRAY CON USUARIOS EN CASO DE ENCONTRAR RESULTADOS, "ERROR EN LA BD" EN CASO DE FALLAR LA CONEXIÓN CON LA BD, "FALLO CONSULTA" EN CASO FALLAR LA CONSULTA O "NO USUARIOS" EN CASO DE NO DEVOLVER NINGÚN USUARIO
-	LLAMADA: ES LLAMADA CADA VEZ QUE SE CARGA LA PÁGINA USUARIOS O DESDE AJAX (recargar_usuarios.php)
-	PARÁMETROS:
-	- FILTRO: PERMITE INDICAR UNA CADENA PARA VISUALIZAR ÚNICAMENTE LOS USUARIOS CUYO NOMBRE O EMAIL COINCIDA CON DICHA CADENA
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CARGAR LOS USUARIOS DE LA BASE DE DATOS. PERMITE CARGAR TODOS O APLICAR UN FILTRO
+		RESULTADO: DEVUELVE UN ARRAY CON USUARIOS EN CASO DE ENCONTRAR RESULTADOS, "ERROR EN LA BD" EN CASO DE FALLAR LA CONEXIÓN CON LA BD, "FALLO CONSULTA" EN CASO FALLAR LA CONSULTA O "NO USUARIOS" EN CASO DE NO DEVOLVER NINGÚN USUARIO
+		LLAMADA: ES LLAMADA CADA VEZ QUE SE CARGA LA PÁGINA USUARIOS O DESDE AJAX (recargar_usuarios.php)
+		PARÁMETROS:
+		- FILTRO: PERMITE INDICAR UNA CADENA PARA VISUALIZAR ÚNICAMENTE LOS USUARIOS CUYO NOMBRE O EMAIL COINCIDA CON DICHA CADENA
 	*/
 	function ver_usuarios($filtro = "ninguno") {
 		$conexion = conexion_database();
@@ -152,14 +156,14 @@
 		}
 	}
 	/*
-	DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CREAR UN USUARIO EN LA BD DESDE UN FORMULARIO.
-	RESULTADO: DEVUELVE TRUE EN CASO DE CREAR EL USUARIO, "ERROR EN LA BD", "FALLO EMAIL" SI NO SE HA PASADO O ES INCORRECTO, "FALLO PASSWORD" SI NO SE HA PASADO, "FALLO TIPO" SI NO SE HA PASADO O ES INCORRECTO O "FALLO CREAR" SI NO SE HA PODIDO CREAR
-	LLAMADA: ES LLAMADA CADA VEZ QUE SE CREA UN USUARIO (crear_usuario.php)
-	PARÁMETROS:
-	- EMAIL: EMAIL DEL USUARIO. ES LA CLAVE PRIMARIA DE LA BD. NO PUEDE SER NULL
-	- PASSWORD: CONTRASEÑA DEL USUARIO. NO PUEDE SER NULL
-	- NOMBRE: NOMBRE DEL USUARIO. PUEDE SER NULL
-	- TIPO: PRIVILEGIOS DEL USUARIO. NO PUEDE SER NULL
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CREAR UN USUARIO EN LA BD DESDE UN FORMULARIO.
+		RESULTADO: DEVUELVE TRUE EN CASO DE CREAR EL USUARIO, "ERROR EN LA BD", "FALLO EMAIL" SI NO SE HA PASADO O ES INCORRECTO, "FALLO PASSWORD" SI NO SE HA PASADO, "FALLO TIPO" SI NO SE HA PASADO O ES INCORRECTO O "FALLO CREAR" SI NO SE HA PODIDO CREAR
+		LLAMADA: ES LLAMADA CADA VEZ QUE SE CREA UN USUARIO (crear_usuario.php)
+		PARÁMETROS:
+		- EMAIL: EMAIL DEL USUARIO. ES LA CLAVE PRIMARIA DE LA BD. NO PUEDE SER NULL
+		- PASSWORD: CONTRASEÑA DEL USUARIO. NO PUEDE SER NULL
+		- NOMBRE: NOMBRE DEL USUARIO. PUEDE SER NULL
+		- TIPO: PRIVILEGIOS DEL USUARIO. NO PUEDE SER NULL
 	*/
 	function crear_usuario($email, $password, $nombre, $tipo) {
 		// VALIDAR LOS DATOS INTRODUCIDOS
@@ -378,4 +382,187 @@
 		$conexion->commit();
 		return True;
 	}
+
+	// FUNCIONES  PARA LA GESTIÓN DE UBICACIONES //
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CARGAR LAS UBICACIONES DE LA BASE DE DATOS. PERMITE MOSTRAR TODAS LAS UBICACIONES, FILTRARLAS POR NOMBRE O MOSTRAR LAS QUE EL USUARIO PUEDE GESTIONAR.
+		RESULTADO: DEVUELVE UN ARRAY CON UBICACIONES EN CASO DE ENCONTRAR RESULTADOS, "ERROR EN LA BD" EN CASO DE FALLAR LA CONEXIÓN CON LA BD, "FALLO CONSULTA" EN CASO FALLAR LA CONSULTA, "NO UBICACIONES" EN CASO DE QUE NINGUNA UBICACIÓN COINCIDA CON EL PATRÓN DE BÚSQUEDA O "NO UBICACIONES USUARIO" EN CASO DE QUE EL USUARIO NO PUEDA GESTIONAR NINGUNA
+		LLAMADA: ES LLAMADA CADA VEZ QUE SE CARGA LA PÁGINA UBICACIONES O DESDE AJAX (recargar_ubicaciones.php)
+		PARÁMETROS:
+		- FILTRO: INDICA EL FILTRO UTILIZADO PARA MOSTRAR LAS UBICACIONES.
+	*/
+	function ver_ubicaciones($filtro = "ninguno") {
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		// MOSTRAR TODAS LAS FILAS
+		if ($filtro == "ninguno") {
+			$resultado = $conexion->query("SELECT codigo, descripcion, observaciones FROM ubicaciones ORDER BY codigo");
+			if (!is_object($resultado) or $resultado->num_rows <= 0) { // COMPROBAR SI LA CONSULTA HA DEVULETO FILAS
+				$conexion->close();
+				return "FALLO CONSULTA"; // SI NO DEVUELVE FILAS CONSIDERAMOS ERROR, YA QUE NO PUEDE SER QUE NO EXISTA NI 1 USUARIO ADMINISTRADOR
+			} else {
+				while ($fila = $resultado->fetch_assoc()) { // RECORRER EL RESULTADO E IR AÑADIENDO LAS FILAS AL ARRAY $usuarios
+					$ubicaciones[] = $fila;
+				}
+				$conexion->close();
+				return $ubicaciones;
+			}
+		// BUSCAR LAS UBICACIONES GESTIONADAS POR EL USUARIO
+		} elseif ($filtro === $_SESSION['email']) {
+			$filtro = strtoupper($filtro);
+			$sentencia = $conexion->prepare("SELECT codigo, descripcion, observaciones FROM ubicaciones WHERE codigo IN (SELECT ubicacion FROM gestiona WHERE usuario = ? ) ORDER BY codigo");
+			$sentencia->bind_param("s", $filtro);
+			if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+				$conexion->close();
+				registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT codigo, descripcion, observaciones FROM ubicaciones WHERE codigo IN (SELECT ubicacion FROM gestiona WHERE usuario = '".$filtro."' desde la función ver_ubicaciones()", "error"); // ANOTAR EVENTO EN LA BD
+				return "FALLO CONSULTA";
+			} else {
+				$resultado = $sentencia->get_result();
+				if ($resultado->num_rows == 0) { // COMPROBAR SI HA DEVULETO FILAS
+					$conexion->close();
+					return "NO UBICACIONES USUARIO";
+				} else {
+					while ($fila = $resultado->fetch_assoc()) { // RECORRER EL RESULTADO E IR AÑADIENDO LAS FILAS AL ARRAY $usuarios
+						$ubicaciones[] = $fila;
+					}
+					$conexion->close();
+					return $ubicaciones;
+				}
+			}
+		// BUSCAR LAS UBICACIONES POR NOMBRE O DESCRIPCIÓN
+		} else {
+			$filtro = strtoupper($filtro);
+			$filtro = "%".$filtro."%";
+			$sentencia = $conexion->prepare("SELECT codigo, descripcion, observaciones FROM ubicaciones WHERE UPPER(codigo) LIKE ? OR UPPER(descripcion) LIKE ? ORDER BY codigo");
+			$sentencia->bind_param("ss", $filtro, $filtro);
+			if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+				$conexion->close();
+				registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT codigo, descripcion, observaciones FROM ubicaciones WHERE codigo LIKE '".$filtro."' OR descripcion LIKE '".$filtro."' ORDER BY codigo  desde la función ver_ubicaciones()", "error"); // ANOTAR EVENTO EN LA BD
+				return "FALLO CONSULTA";
+			} else {
+				$resultado = $sentencia->get_result();
+				if ($resultado->num_rows == 0) { // COMPROBAR SI HA DEVULETO FILAS
+					$conexion->close();
+					return "NO UBICACIONES";
+				} else {
+					while ($fila = $resultado->fetch_assoc()) { // RECORRER EL RESULTADO E IR AÑADIENDO LAS FILAS AL ARRAY $usuarios
+						$ubicaciones[] = $fila;
+					}
+					$conexion->close();
+					return $ubicaciones;
+				}
+			}
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CREAR UNA UBICACIÓN EN LA BD DESDE UN FORMULARIO.
+		RESULTADO: DEVUELVE TRUE EN CASO DE CREAR LA UBICACIÓN, "ERROR EN LA BD" SI NO HAY CONECTIVIDAD CON LA BD, "FALLO CODIGO" SI NO SE HA PASADO O ES INCORRECTO, "FALLO DESCRIPCION" SI NO SE HA PASADO, "FALLO CONSULTA" SI FALLA LA EJECUCIÓN "FALLO CREAR" SI NO SE HA PODIDO CREAR.
+		LLAMADA: ES LLAMADA CADA VEZ QUE SE CREA UN USUARIO (crear_ubicacion.php)
+		PARÁMETROS:
+		- CÓDIGO: CÓDIGO DE LA UBICACIÓN. ES LA CLAVE PRIMARIA DE LA TABLE. NO PUEDE SER NULL
+		- DESCRIPCIÓN: DESCRIPCIÓN DE LA UBICACIÓN. NO PUEDE SER NULL
+		- OBSERVACIONES: COMENTARIOS ADICIONALES DE LA UBICACIÓN. PUEDE SER NULL
+	*/
+	function crear_ubicacion($codigo, $descripcion, $observaciones) {
+		// VALIDAR LOS DATOS INTRODUCIDOS
+		if (empty($codigo) or !preg_match('/^[[:alpha:]]{2}\d{2}$/', $codigo)) { // COMPROBAR QUE SE HAYA PASADO UN CÓDIGO Y ESTE TENGA UN FORMATO CORRECTO
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar modificar crear una ubicación código inválido '".$codigo."' crear_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CODIGO";
+		}
+		if (empty($descripcion)) {
+			return "FALLO DESCRIPCION";
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar crear una ubicación sin indicar su descripción crear_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+		}	else $descripcion = ucwords(strtolower($descripcion)); // FORMATEAR LA VARIABLE, PRIMERA LETRA MAYÚSCULA DE CADA PALABRA, RESTO MINÚNSCULA
+		if (empty($observaciones)) $observaciones = null;
+		else $observaciones = ucwords(strtolower($observaciones)); // FORMATEAR LA VARIABLE, PRIMERA LETRA MAYÚSCULA DE CADA PALABRA, RESTO MINÚNSCULA
+
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+
+		// INSERTAR EN LA BD
+		$sentencia = $conexion->prepare("INSERT INTO ubicaciones VALUES(?, ?, ?)");
+		$sentencia->bind_param("sss", $codigo, $descripcion, $observaciones);
+		if (!$sentencia->execute()) {
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al intentar ejecutar la query INSERT INTO ubicaciones VALUES('".$codigo."', '".$descripcion."', '".$observaciones."') desde la función crear_ubicacion()", "error");
+			return "FALLO CONSULTA";
+		} elseif ($sentencia->affected_rows == 0) {
+			$conexion->close();
+			return "FALLO CREAR";
+		} else {
+			$conexion->close();
+			return True;
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA ELIMINAR UNA UBICACIÓN DE LA BASE DE DATOS. UTILIZAR FUNCIÓN strtolower PARA HACERLA NO KEY SENSITIVE
+		RESULTADO: DEVUELVE TRUE SI ELIMINA LA FILA, "FALLO CODIGO" SI NO SE HA PASADO UN CÓDIGO, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR EL DELETE, "NO ELIMINADO" SI NO SE ELIMINA
+		LLAMADA: ES LLAMADA DESDE eliminar_ubicacion.php
+		PARÁMETROS:
+			- CODIGO: RECIBE UN CODIGO QUE BORRAR
+	*/
+	function borrar_ubicacion($codigo) {
+		if (empty($codigo)) {
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al llamar a la función borrar_ubicacion() sin pasarle un código", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CODIGO";
+		}
+		else $codigo = strtolower($codigo); // CONVERTIR EMAIL A MINÚSCULAS
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$sentencia = $conexion->prepare("DELETE FROM ubicaciones WHERE codigo = ?");
+		$sentencia->bind_param("s", $codigo);
+		if (!$sentencia->execute()) { // COMPROBAR QUE SE HAYA PODIDO EJECUTAR LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al intentar ejecutar la query DELETE FROM ubicaciones WHERE codigo = ".$codigo." desde la función borrar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		}	elseif ($sentencia->affected_rows > 0) {  // COMPROBAR QUE SE HAYA ELIMINADO ALGUNA
+			$conexion->close();
+			return True;
+		} else {
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "No se ha podido eliminar la ubicacion ".$codigo." desde la función borrar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "NO ELIMINADO";
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA MODIFICAR UNA UBICACIÓN DESDE UN FORM.
+		RESULTADO: DEVUELVE TRUE SI MODIFICA LA FILA, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR EL UPDATE, "NO MODIFICADO" SI NO SE MODIFICA, "FALLO CODIGO" SI NO SE PASA CÓDIGO O ES INCORRECTO, "FALLO DESCRIPCION" SI NO SE PASA
+		LLAMADA: ES LLAMADA DESDE eliminar_usuario.php
+		PARÁMETROS:
+		- CÓDIGO: CÓDIGO DE LA UBICACIÓN. ES LA CLAVE PRIMARIA DE LA TABLE. NO PUEDE SER NULL. SE UTILIZA PARA SABER QUE UBICACIÓN MODIFICAR
+		- DESCRIPCIÓN: DESCRIPCIÓN DE LA UBICACIÓN. NO PUEDE SER NULL. NUEVO VALOR PARA EL CAMPO
+		- OBSERVACIONES: COMENTARIOS ADICIONALES DE LA UBICACIÓN. PUEDE SER NULL. NUEVO VALOR PARA EL CAMPO
+	*/
+	function modificar_ubicacion($codigo, $descripcion, $observaciones) {
+		// VALIDAR LOS DATOS INTRODUCIDOS
+		if (empty($codigo) or !preg_match('/^[[:alpha:]]{2}\d{2}$/', $codigo)) {
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar modificar una ubicación con el siguiente código inválido '".$codigo."' modificar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CODIGO";
+		}
+		if (empty($descripcion)) {
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar modificar una ubicación sin indicar su descripción modificar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO DESCRIPCIÓN";
+		} else $descripcion = ucwords(strtolower($descripcion)); // FORMATEAR LA DESCRIPCIÓN, PRIMERA LETRA MAYUS, EL RESTO MINUS
+		if (empty($observaciones)) $observaciones = null;
+		else $observaciones = ucwords(strtolower($observaciones)); // FORMATEAR LAS OBSERVACIONES, PRIMERA LETRA MAYUS, EL RESTO MINUS
+
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+
+		$sentencia = $conexion->prepare("UPDATE ubicaciones SET descripcion = ?, observaciones = ? WHERE codigo = ?");
+		$sentencia->bind_param("sss", $descripcion, $observaciones, $codigo);
+		if (!$sentencia->execute()) {
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al intentar ejecutar la query UPDATE ubicaciones SET descripcion = '".$descripcion."', observaciones = '".$observaciones."' WHERE codigo = '".$codigo."' desde la función modificar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($sentencia->affected_rows > 0) {  // COMPROBAR QUE SE HAYA MODIFICADO ALGUNA
+			$conexion->close();
+			return True;
+		} else {
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "No se ha podido modificar la ubicacion ".$codigo." con la descripcion ".$descripcion." y las observaciones ".$observaciones." desde la función modificar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "NO MODIFICADO";
+		}
+	}
+
 ?>
