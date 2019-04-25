@@ -20,7 +20,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>UBICACIONES | IES SERRA PERENXISA</title>
+	<title>ARTÍCULOS | IES SERRA PERENXISA</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 	<link rel="icon" type="image/jpg" href="../IMG/logo1.jpg">
@@ -42,13 +42,13 @@
 			<div class="collapse navbar-collapse" id="navbarSupportedContent-555">
 				<ul class="navbar-nav mr-auto">
 					<li class="nav-item">
-						<a id="articulos" class="nav-link" href="/PHP/articulos.php">Artículos</a>
+						<a id="articulos" class="nav-link pagina_activa" href="/PHP/articulos.php">Artículos</a>
 					</li>
 					<li class="nav-item">
 						<a id="logs" class="nav-link" href="/PHP/logs.php">Logs</a>
 					</li>
 					<li class="nav-item">
-						<a id="ubicaciones" class="nav-link pagina_activa" href="/PHP/ubicaciones.php">Ubicaciones</a>
+						<a id="ubicaciones" class="nav-link" href="/PHP/ubicaciones.php">Ubicaciones</a>
 					</li>
 					<li class="nav-item">
 						<a id="usuarios" class="nav-link" href="/PHP/usuarios.php">Usuarios</a>
@@ -69,44 +69,36 @@
 
 <!--/.Navbar -->
 <div class="container">
-	<a href="../PHP/index.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
+	<a href="../PHP/articulos.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
 </div>
+	<div class="col-xl-10 col-lg-12 offset-xl-1">
+	<ul class="nav nav-tabs" id="myTab" role="tablist">
+		<li class="nav-item">
+			<button onclick='recargar_articulos()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todos los artículos</button>
+		</li>
+		<li class='nav-item'>
+			<button onclick='buscar_articulos()' type='button' class='nav-link' id='search-tab' data-toggle='tab' role='tab' aria-controls='search' aria-selected='false'><i class='fas fa-search'></i></button>
+		</li>
+		<li class="nav-item">
+			<input id="campo_buscar" class='nav-link form-control' type='text' placeholder='Buscar...'>
+		</li>
+		<?php
+				if ($_SESSION['tipo'] === "administrador") {
+					echo "
+					<li class='nav-item'>
+						<button id='crear_articulo' type='button' class='btn color_intermedio'>Crear artículo</button>
+					</li>";
+				}
+		?>
+	</ul>
 <?php
-	$resultado_ubicaciones = ver_ubicaciones();
-	if ($resultado_ubicaciones === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Compruebe que el servicio esté funcionando correctamente. Pruebe a conectarse más tarde.";
-	elseif ($resultado_ubicaciones === "NO USUARIOS") echo "No se ha encontrado ningún usuario con el partón de búsqueda introducido";
-	elseif ($resultado_ubicaciones === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos de la BD. Pruebe a actualizar la página.";
+	$resultado_articulos = ver_articulos();
+	if ($resultado_articulos === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Prueba a conectarse más tarde.";
+	elseif ($resultado_articulos === "NO ARTICULOS") echo "No se ha encontrado ningún artículo en la BD.";
+	elseif ($resultado_articulos === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos de la BD. Prueba a actualizar la página e intentarlo de nuevo.";
 	else {
 ?>
-<div class="col-xl-10 col-lg-12 offset-xl-1">
-		<ul class="nav nav-tabs" id="myTab" role="tablist">
-			<li class="nav-item">
-				<button onclick='recargar_ubicaciones()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todas las ubicaciones</button>
-			</li>
-<?php
-			if ($_SESSION['tipo'] === "editor") {
-				echo "
-				<li class='nav-item'>
-					<button onclick='recargar_ubicaciones(\"".$_SESSION['email']."\")' type='button' class='nav-link' id='profile-tab' data-toggle='tab' role='tab' aria-controls='profile' aria-selected='false'>Mis ubicaciones</button>
-				</li>";
-			}
-?>
-			<li class='nav-item'>
-				<button onclick='buscar_ubicaciones()' type='button' class='nav-link' id='search-tab' data-toggle='tab' role='tab' aria-controls='search' aria-selected='false'><i class='fas fa-search'></i></button>
-			</li>
-			<li class="nav-item">
-				<input id="campo_buscar" class='nav-link form-control' type='text' placeholder='Buscar...'>
-			</li>
-<?php
-			if ($_SESSION['tipo'] === "administrador") {
-				echo "
-				<li class='nav-item'>
-					<button id='crear_ubicacion' type='button' class='btn color_intermedio'>Crear ubicación</button>
-				</li>";
-			}
-?>
-		</ul>
-	<table id='tabla_ubicaciones' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
+	<table id='tabla_articulos' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
 		<thead class='color_fuerte'>
 			<tr>
 				<th scope='col'>Código</th>
@@ -115,18 +107,17 @@
 				<th scope='col'>Acciones</th>
 			</tr>
 		</thead>
-		<tbody id="contenido_ubicaciones">
+		<tbody id="contenido_articulos">
 <?php
-	foreach ($resultado_ubicaciones as $ubicacion) {
+	foreach ($resultado_articulos as $articulo) {
 		echo "
 			<tr>
-				<td><input type='text' name='campo_codigo' value='".$ubicacion['codigo']."' readonly></td>
-				<td><input type='text' name='campo_descripcion' value='".$ubicacion['descripcion']."' readonly></td>
-				<td><input type='text' name='campo_observaciones' value='".$ubicacion['observaciones']."' readonly></td>
+				<td><input type='text' name='campo_codigo' value='".$articulo['codigo']."' readonly></td>
+				<td><input type='text' name='campo_descripcion' value='".$articulo['descripcion']."' readonly></td>
+				<td><input type='text' name='campo_observaciones' value='".$articulo['observaciones']."' readonly></td>
 				<td>
-					<button onclick='ver_ubicaciones(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>
-					<button onclick='eliminar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar ubicación'><i class='fas fa-trash'></i></button>
-					<button onclick='modificar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar ubicación'><i class='fas fa-pen'></i></button>
+					<button onclick='eliminar_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar artículo'><i class='fas fa-trash'></i></button>
+					<button onclick='modificar_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar artículo'><i class='fas fa-pen'></i></button>
 				</td>
 			</tr>
 		";
@@ -144,7 +135,7 @@
 <script src="../JS/popper.min.js"></script>
 <script src="../JS/bootstrap.min.js"></script>
 <script src="../JS/tooltip.js"></script>
-<script src="../JS/ubicaciones.js"></script>
+<script src="../JS/articulos.js"></script>
 
 </body>
 </html>

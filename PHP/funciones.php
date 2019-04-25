@@ -506,7 +506,7 @@
 			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al llamar a la función borrar_ubicacion() sin pasarle un código", "error"); // ANOTAR EVENTO EN LA BD
 			return "FALLO CODIGO";
 		}
-		else $codigo = strtolower($codigo); // CONVERTIR EMAIL A MINÚSCULAS
+		else $codigo = strtoupper($codigo); // CONVERTIR CÓDIGO A MAYÚSCULAS
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		$sentencia = $conexion->prepare("DELETE FROM ubicaciones WHERE codigo = ?");
@@ -561,6 +561,166 @@
 		} else {
 			$conexion->close();
 			registrar_evento(time(), $_SESSION['email'], "No se ha podido modificar la ubicacion ".$codigo." con la descripcion ".$descripcion." y las observaciones ".$observaciones." desde la función modificar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "NO MODIFICADO";
+		}
+	}
+
+	// FUNCIONES  PARA LA GESTIÓN DE ARTÍCULOS //
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CARGAR LOS ARTÍCULOS DE LA BASE DE DATOS. PERMITE MOSTRAR TODOS LOS ARTÍCULOS O FILTRARLOS POR NOMBRE/DESCRIPCIÓN.
+		RESULTADO: DEVUELVE UN ARRAY CON ARTÍCULOS EN CASO DE ENCONTRAR RESULTADOS, "ERROR EN LA BD" EN CASO DE FALLAR LA CONEXIÓN CON LA BD, "FALLO CONSULTA" EN CASO FALLAR LA CONSULTA, "NO ARTÍCULOS" EN CASO DE QUE NO ENCUENTRE ARTÍCULOS
+		LLAMADA: ES LLAMADA CADA VEZ QUE SE CARGA LA PÁGINA ARTÍCULOS O DESDE AJAX (recargar_articulos.php)
+		PARÁMETROS:
+		- FILTRO: INDICA EL FILTRO UTILIZADO PARA MOSTRAR LOS ARTÍCULOS.
+	*/
+	function ver_articulos($filtro = "ninguno") {
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		// MOSTRAR TODAS LAS FILAS
+		if ($filtro == "ninguno") {
+			$resultado = $conexion->query("SELECT codigo, descripcion, observaciones FROM articulos ORDER BY codigo");
+			if ($resultado->num_rows <= 0) { // COMPROBAR SI LA CONSULTA HA DEVULETO FILAS
+				$conexion->close();
+				return "NO ARTICULOS";
+			} else {
+				while ($fila = $resultado->fetch_assoc()) { // RECORRER EL RESULTADO E IR AÑADIENDO LAS FILAS AL ARRAY $articulos
+					$articulos[] = $fila;
+				}
+				$conexion->close();
+				return $articulos;
+			}
+		// BUSCAR LAS UBICACIONES POR NOMBRE O DESCRIPCIÓN
+		} else {
+			$filtro = strtoupper($filtro);
+			$filtro = "%".$filtro."%";
+			$sentencia = $conexion->prepare("SELECT codigo, descripcion, observaciones FROM articulos WHERE UPPER(codigo) LIKE ? OR UPPER(descripcion) LIKE ? ORDER BY codigo");
+			$sentencia->bind_param("ss", $filtro, $filtro);
+			if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+				$conexion->close();
+				registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT codigo, descripcion, observaciones FROM ubicaciones WHERE codigo LIKE '".$filtro."' OR descripcion LIKE '".$filtro."' ORDER BY codigo  desde la función ver_ubicaciones()", "error"); // ANOTAR EVENTO EN LA BD
+				return "FALLO CONSULTA";
+			} else {
+				$resultado = $sentencia->get_result();
+				if ($resultado->num_rows == 0) { // COMPROBAR SI HA DEVULETO FILAS
+					$conexion->close();
+					return "NO ARTICULOS";
+				} else {
+					while ($fila = $resultado->fetch_assoc()) { // RECORRER EL RESULTADO E IR AÑADIENDO LAS FILAS AL ARRAY $usuarios
+						$articulos[] = $fila;
+					}
+					$conexion->close();
+					return $articulos;
+				}
+			}
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CREAR UN ARTÍCULO EN LA BD DESDE UN FORMULARIO.
+		RESULTADO: DEVUELVE TRUE EN CASO DE CREAR EL ARTÍCULO, "ERROR EN LA BD" SI NO HAY CONECTIVIDAD CON LA BD, "FALLO CODIGO" SI NO SE HA PASADO O ES INCORRECTO, "FALLO DESCRIPCION" SI NO SE HA PASADO, "FALLO CONSULTA" SI FALLA LA EJECUCIÓN "FALLO CREAR" SI NO SE HA PODIDO CREAR.
+		LLAMADA: ES LLAMADA CADA VEZ QUE SE CREA UN USUARIO (crear_ubicacion.php)
+		PARÁMETROS:
+		- CÓDIGO: CÓDIGO DEL ARTÍCULO. ES LA CLAVE PRIMARIA DE LA TABLE. NO PUEDE SER NULL
+		- DESCRIPCIÓN: DESCRIPCIÓN DEL ARTÍCULO. NO PUEDE SER NULL
+		- OBSERVACIONES: COMENTARIOS ADICIONALES DEL ARTÍCULO. PUEDE SER NULL
+	*/
+	function crear_articulo($codigo, $descripcion, $observaciones) {
+		// VALIDAR LOS DATOS INTRODUCIDOS
+		if (empty($codigo) or !preg_match('/^[[:alpha:]]{2}\d{2}$/', $codigo)) { // COMPROBAR QUE SE HAYA PASADO UN CÓDIGO Y ESTE TENGA UN FORMATO CORRECTO
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar modificar crear una ubicación código inválido '".$codigo."' crear_articulo()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CODIGO";
+		}
+		if (empty($descripcion)) {
+			return "FALLO DESCRIPCION";
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar crear una ubicación sin indicar su descripción crear_articulo()", "error"); // ANOTAR EVENTO EN LA BD
+		}	else $descripcion = ucwords(strtolower($descripcion)); // FORMATEAR LA VARIABLE, PRIMERA LETRA MAYÚSCULA DE CADA PALABRA, RESTO MINÚNSCULA
+		if (empty($observaciones)) $observaciones = null;
+		else $observaciones = ucwords(strtolower($observaciones)); // FORMATEAR LA VARIABLE, PRIMERA LETRA MAYÚSCULA DE CADA PALABRA, RESTO MINÚNSCULA
+
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+
+		// INSERTAR EN LA BD
+		$sentencia = $conexion->prepare("INSERT INTO articulos VALUES(?, ?, ?)");
+		$sentencia->bind_param("sss", $codigo, $descripcion, $observaciones);
+		if (!$sentencia->execute()) {
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al intentar ejecutar la query INSERT INTO articulos VALUES('".$codigo."', '".$descripcion."', '".$observaciones."') desde la función crear_articulo()", "error");
+			return "FALLO CONSULTA";
+		} elseif ($sentencia->affected_rows == 0) {
+			$conexion->close();
+			return "FALLO CREAR";
+		} else {
+			$conexion->close();
+			return True;
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA ELIMINAR UN ARTÍCULO DE LA BASE DE DATOS. UTILIZAR FUNCIÓN strtolower PARA HACERLA NO KEY SENSITIVE
+		RESULTADO: DEVUELVE TRUE SI ELIMINA LA FILA, "FALLO CODIGO" SI NO SE HA PASADO UN CÓDIGO, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR EL DELETE, "NO ELIMINADO" SI NO SE ELIMINA
+		LLAMADA: ES LLAMADA DESDE eliminar_articulo.php
+		PARÁMETROS:
+			- CODIGO: RECIBE UN CODIGO QUE BORRAR
+	*/
+	function borrar_articulo($codigo) {
+		if (empty($codigo)) {
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al llamar a la función borrar_articulo() sin pasarle un código", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CODIGO";
+		}
+		else $codigo = strtoupper($codigo); // CONVERTIR EMAIL A MINÚSCULAS
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$sentencia = $conexion->prepare("DELETE FROM articulos WHERE codigo = ?");
+		$sentencia->bind_param("s", $codigo);
+		if (!$sentencia->execute()) { // COMPROBAR QUE SE HAYA PODIDO EJECUTAR LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al intentar ejecutar la query DELETE FROM articulos WHERE codigo = ".$codigo." desde la función borrar_articulo()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		}	elseif ($sentencia->affected_rows > 0) {  // COMPROBAR QUE SE HAYA ELIMINADO ALGUNA
+			$conexion->close();
+			return True;
+		} else {
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "No se ha podido eliminar el artículo ".$codigo." desde la función borrar_articulo()", "error"); // ANOTAR EVENTO EN LA BD
+			return "NO ELIMINADO";
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA MODIFICAR UNA ARTÍCULO DESDE UN FORM.
+		RESULTADO: DEVUELVE TRUE SI MODIFICA LA FILA, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR EL UPDATE, "NO MODIFICADO" SI NO SE MODIFICA, "FALLO CODIGO" SI NO SE PASA CÓDIGO O ES INCORRECTO, "FALLO DESCRIPCION" SI NO SE PASA
+		LLAMADA: ES LLAMADA DESDE eliminar_articulo.php
+		PARÁMETROS:
+		- CÓDIGO: CÓDIGO DEL ARTÍCULO. ES LA CLAVE PRIMARIA DE LA TABLE. NO PUEDE SER NULL. SE UTILIZA PARA SABER QUE ARTÍCULO MODIFICAR
+		- DESCRIPCIÓN: DESCRIPCIÓN DEL ARTÍCULO. NO PUEDE SER NULL. NUEVO VALOR PARA EL CAMPO
+		- OBSERVACIONES: COMENTARIOS ADICIONALES DEL ARTÍCULO. PUEDE SER NULL. NUEVO VALOR PARA EL CAMPO
+	*/
+	function modificar_articulo($codigo, $descripcion, $observaciones) {
+		// VALIDAR LOS DATOS INTRODUCIDOS
+		if (empty($codigo) or !preg_match('/^[[:alpha:]]{2}\d{2}$/', $codigo)) {
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar modificar una artículo con el siguiente código inválido '".$codigo."' modificar_articulo()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CODIGO";
+		}
+		if (empty($descripcion)) {
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar modificar un artículo sin indicar su descripción modificar_articulo()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO DESCRIPCIÓN";
+		} else $descripcion = ucwords(strtolower($descripcion)); // FORMATEAR LA DESCRIPCIÓN, PRIMERA LETRA MAYUS, EL RESTO MINUS
+		if (empty($observaciones)) $observaciones = null;
+		else $observaciones = ucwords(strtolower($observaciones)); // FORMATEAR LAS OBSERVACIONES, PRIMERA LETRA MAYUS, EL RESTO MINUS
+
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+
+		$sentencia = $conexion->prepare("UPDATE articulos SET descripcion = ?, observaciones = ? WHERE codigo = ?");
+		$sentencia->bind_param("sss", $descripcion, $observaciones, $codigo);
+		if (!$sentencia->execute()) {
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al intentar ejecutar la query UPDATE articulos SET descripcion = '".$descripcion."', observaciones = '".$observaciones."' WHERE codigo = '".$codigo."' desde la función modificar_articulo()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($sentencia->affected_rows > 0) {  // COMPROBAR QUE SE HAYA MODIFICADO ALGUNA
+			$conexion->close();
+			return True;
+		} else {
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "No se ha podido modificar el artículo ".$codigo." con la descripcion ".$descripcion." y las observaciones ".$observaciones." desde la función modificar_articulo()", "error"); // ANOTAR EVENTO EN LA BD
 			return "NO MODIFICADO";
 		}
 	}
