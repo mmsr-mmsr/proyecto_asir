@@ -83,7 +83,20 @@
 	else {
 ?>
 <div class="col-xl-10 col-lg-12 offset-xl-1">
-	<button id="crear_usuario" type="button" class="btn color_intermedio">Crear Usuario</button>
+	<ul class="nav nav-tabs" id="myTab" role="tablist">
+		<li class="nav-item">
+			<button onclick='recargar_usuarios()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todos los usuarios</button>
+		</li>
+		<li class='nav-item'>
+			<button onclick='buscar_usuarios()' type='button' class='nav-link' id='search-tab' data-toggle='tab' role='tab' aria-controls='search' aria-selected='false'><i class='fas fa-search'></i></button>
+		</li>
+		<li class="nav-item">
+			<input id="campo_buscar" class='nav-link form-control' type='text' placeholder='Buscar...'>
+		</li>
+		<li class='nav-item'>
+			<button id="crear_usuario" type="button" class="btn color_intermedio">Crear Usuario</button>
+		</li>
+	</ul>
 	<table id='tabla_usuarios' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
 		<thead class='color_fuerte'>
 			<tr>
@@ -107,8 +120,9 @@
 	          <option value='editor'"; if ($usuario['tipo'] == "editor") echo TIPO_USUARIO_SELECCIONADO; echo ">Editor</option>
 	          <option value='administrador'"; if ($usuario['tipo'] == "administrador") echo TIPO_USUARIO_SELECCIONADO; echo ">Administrador</option>
 	        </select>
-				<td>
-					<button onclick='ver_ubicaciones(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>
+				<td>";
+						if ($usuario['tipo'] == "editor") echo "<button onclick='ver_ubicaciones(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>";
+				echo "
 					<button onclick='eliminar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar usuario'><i class='fas fa-trash'></i></button>
 					<button onclick='modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar usuario'><i class='fas fa-pen'></i></button>
 					<button onclick='modificar_password(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar contraseña'><i class='fas fa-key'></i></button>

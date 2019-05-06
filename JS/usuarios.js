@@ -24,6 +24,20 @@ function recargar_usuarios(filtro = "ninguno"){
     $("#contenido_usuarios").html(resultado); //EL RESULTADO DEL SCRIPT PHP SUSTITUYE EL CONTENIDO DE LA TABLA
   });
 }
+/**
+  DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA FILTRAR LA TABLA USUARIOS POR NOMBRE/EMAIL. SI EL CAMPO 'campo_buscar' ESTÁ VACÍO MUESTRA LA TABLA ENTERA
+  LLAMADA: ES LLAMADA CADA VEZ QUE SE HACE CLICK EN EL BOTÓN <button onclick='buscar_usuarios()'>
+  PARÁMETROS:
+*/
+function buscar_usuarios() {
+  var texto;
+  texto = $("#campo_buscar").val();
+  if (texto.length > 0) {
+    recargar_usuarios(texto);
+  } else {
+    recargar_usuarios();
+  }
+}
 // AL HACER CLICK EN EL BOTÓN DE CREAR USUARIO SE AÑADE UNA FILA A LA TABLA CON UN FORM
 $("#crear_usuario").click(function(){
   $("#contenido_usuarios").append(
@@ -227,6 +241,7 @@ function modificar_usuario(elemento) {
 */
 function confirmar_modificar_usuario(elemento) {
   var fila, email, nombre, tipo;
+
   // OBTENER LOS DATOS
   fila = $(elemento).parent().siblings();
   email = fila[0]['firstChild']['value'];
@@ -263,7 +278,7 @@ function confirmar_modificar_usuario(elemento) {
     - ELEMENTO: ELEMENTO DEL ÁRBOL DOM QUE HA LLAMADO A LA FUNCIÓN
 */
 function cancelar_modificar_usuario(elemento) {
-  var botones, fila, tipo;
+  var botones, fila, tipo, contenido_acciones;
   // CAMBIAR LOS INPUTS A MODO NO EDITABLE
   fila = $(elemento).parent().siblings();
   nombre = fila[1]['firstChild'];
@@ -272,13 +287,15 @@ function cancelar_modificar_usuario(elemento) {
   $(tipo).attr("disabled", "disabled");
 
   // CAMBIAR LOS BOTONES DE CONFIRMAR O CANCELAR LA MODIFICACIÓN POR LOS HABITUALES DE "ACCIONES"
+  if (tipo.value == "editor") contenido_acciones = "<button onclick='ver_ubicaciones(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>"; // SOLO MOSTRAMOS EL BOTÓN VER UBICACIONES SI ES EDITOR
+  else contenido_acciones = "";
   botones = $(elemento).parent();
-  $(botones).html(
-    "<button type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>" +
+  contenido_acciones = contenido_acciones.concat(
     "<button onclick='eliminar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar usuario'><i class='fas fa-trash'></i></button>" +
     "<button onclick='modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar usuario'><i class='fas fa-pen'></i></button>" +
     "<button onclick='modificar_password(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar contraseña'><i class='fas fa-key'></i></button>"
   );
+  $(botones).html(contenido_acciones);
 }
 /**
   DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA SOLICITAR UNA NUEVA CONTRASEÑA Y EJECUTAR EL SCRIPT PHP modificar_password.php PARA MODIFICAR LA CONTRASEÑA DE UN USUARIO.

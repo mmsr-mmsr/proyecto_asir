@@ -44,15 +44,26 @@
 					<li class="nav-item">
 						<a id="articulos" class="nav-link" href="/PHP/articulos.php">Artículos</a>
 					</li>
-					<li class="nav-item">
-						<a id="logs" class="nav-link" href="/PHP/logs.php">Logs</a>
-					</li>
+<?php
+			if ($_SESSION['tipo'] === "administrador") {
+				echo "<li class='nav-item'>
+								<a id='logs' class='nav-link' href='/PHP/logs.php'>Logs</a>
+							</li>
+				";
+			}
+?>
 					<li class="nav-item">
 						<a id="ubicaciones" class="nav-link pagina_activa" href="/PHP/ubicaciones.php">Ubicaciones</a>
 					</li>
-					<li class="nav-item">
-						<a id="usuarios" class="nav-link" href="/PHP/usuarios.php">Usuarios</a>
+<?php
+			if ($_SESSION['tipo'] === "administrador") {
+				echo "
+					<li class='nav-item'>
+						<a id='usuarios' class='nav-link' href='/PHP/usuarios.php'>Usuarios</a>
 					</li>
+				";
+			}
+?>
 				</ul>
 				<ul class="navbar-nav ml-auto nav-flex-icons">
 					<li class="nav-item avatar dropdown">

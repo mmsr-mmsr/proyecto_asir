@@ -28,8 +28,9 @@
 							<option value='editor'"; if ($usuario['tipo'] == "editor") $resultado .= TIPO_USUARIO_SELECCIONADO; $resultado .= ">Editor</option>
 							<option value='administrador'"; if ($usuario['tipo'] == "administrador") $resultado .= TIPO_USUARIO_SELECCIONADO; $resultado .= ">Administrador</option>
 						</select>
-					<td>
-						<button onclick='ver_ubicaciones(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>
+					<td>";
+						if ($usuario['tipo'] == "editor") $resultado .= "<button onclick='ver_ubicaciones(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>";
+				$resultado .= "
 						<button onclick='eliminar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar usuario'><i class='fas fa-trash'></i></button>
 						<button onclick='modificar_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar usuario'><i class='fas fa-pen'></i></button>
 						<button onclick='modificar_password(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar contraseña'><i class='fas fa-key'></i></button>
