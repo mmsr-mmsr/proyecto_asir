@@ -90,7 +90,7 @@
 	else {
 ?>
 <div class="col-xl-10 col-lg-12 offset-xl-1">
-		<ul class="nav nav-tabs" id="myTab" role="tablist">
+		<ul class="nav nav-tabs" id="menu_acciones" role="tablist">
 			<li class="nav-item">
 				<button onclick='recargar_ubicaciones()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todas las ubicaciones</button>
 			</li>
@@ -117,6 +117,19 @@
 			}
 ?>
 		</ul>
+		<!-- ACCIONES A REALIZAR A LA HORA DE INVENTARIAR LA UBICACIÓN (CANCELAR CAMBIOS, CONFIRMAR CAMBIOS O AÑADIR UNA UBICACIÓN), ESTÁ OCULTO HASTA QUE EL USUARIO HAGA CLICK EN "VER ARTÍCULOS" DE UNA UBICACIÓN -->
+		<ul class="nav nav-tabs" id="menu_acciones_inventario" style="display:none;" role="tablist">
+			<li class="nav-item">
+				<button onclick='cancelar_inventario()' type='button'><i class="fas fa-chevron-circle-left fa-lg"></i></button>
+			</li>
+			<li class="nav-item">
+				<button id='boton_confirmar_inventario' onclick='confirmar_inventario()' type='button'><i class="fas fa-save fa-lg"></i></button>
+			</li>
+			<li class="nav-item">
+				<select id='lista_ubicaciones_seleccionables' class='custom-select' onchange='add_articulo(this)'>";
+				</select>
+			</li>
+		</ul>
 	<table id='tabla_ubicaciones' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
 		<thead class='color_fuerte'>
 			<tr>
@@ -135,7 +148,7 @@
 				<td><input type='text' name='campo_descripcion' value='".$ubicacion['descripcion']."' readonly></td>
 				<td><input type='text' name='campo_observaciones' value='".$ubicacion['observaciones']."' readonly></td>
 				<td>
-					<button onclick='ver_ubicaciones(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>
+					<button onclick='ver_articulos(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver artículos'><i class='fas fa-search'></i></button>
 					<button onclick='eliminar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar ubicación'><i class='fas fa-trash'></i></button>
 					<button onclick='modificar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar ubicación'><i class='fas fa-pen'></i></button>
 				</td>

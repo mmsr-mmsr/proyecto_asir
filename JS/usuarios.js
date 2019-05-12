@@ -351,7 +351,7 @@ function modificar_password(elemento) {
             function(resultado) {
               if (resultado == "CORRECTO") {
                 $.alert({
-                  title: "ERROR",
+                  title: "CONTRASEÑA MODIFICADA",
                   content: "Se ha modificado correctamente la contraseña del usuario " + email + " y se le ha notificado por correo",
                   columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
                 });

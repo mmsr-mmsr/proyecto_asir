@@ -12,7 +12,7 @@
 		$resultado_articulos = ver_articulos($_POST['campo_filtro']);
 	  if ($resultado_articulos === "ERROR EN LA BD") echo "Se ha producido un error al conectarse al servidor. Prueba a conectarte más rápido.";
 		elseif ($resultado_articulos === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos. Prueba a actualizar la página y volver a intentarlo.";
-		elseif ($resultado_articulos === "NO UBICACIONES") echo "No se ha encontrado a ningún artículo que concuerde con el patrón de búsqueda.";
+		elseif ($resultado_articulos === "NO ARTICULOS") echo "No se ha encontrado a ningún artículo que concuerde con el patrón de búsqueda.";
 		//SI NO SE HA PRODUCIDO NINGÚN ERROR, RECORREMOS EL ARRAY RESULTADO
 		elseif ($resultado_articulos) {
 			$resultado = "";

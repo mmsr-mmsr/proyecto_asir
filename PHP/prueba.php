@@ -1,28 +1,21 @@
 <?php
 	session_start();
 	include "funciones.php";
-	echo date("d/m/Y H:i:s", 1555632000);
-
+	echo $resultado_validacion = validar_permisos_inventariar("AU02", $_SESSION['email']);
 ?>
 <html>
 <head>
 </head>
 <body>
-	<form method="post" action="">
-		<section class="input">
-			<input type="date" id="date" name="maintenanace_date"/>
-		</section>
-		<section class="input">
-			<input type="time" id="time" name="maintenance_time" placeholder="EST"/>
-		</section>
-	</form>
-	<button onclick="ver()">Ver fecha</button>
 	<script>
-	function ver() {
-		var date = new Date(document.getElementById("date").value);
-		var timestamp2 = date.getTime();
-		alert(timestamp2);
-	}
+		articulos_array = [];
+		articulos_array[0]= [];
+		articulos_array[0][0] = "AA00";
+		articulos_array[0][1] = "1";
+		articulos_array[1]= [];
+		articulos_array[1][0] = "BB00";
+		articulos_array[1][1] = "3";
+		console.log(articulos_array);
 	</script>
 </body>
 </html>

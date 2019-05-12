@@ -21,7 +21,7 @@ function recargar_ubicaciones(filtro = "ninguno"){
     campo_filtro: filtro
   },
   function(resultado) {
-    $("#contenido_ubicaciones").html(resultado); //EL RESULTADO DEL SCRIPT PHP SUSTITUYE EL CONTENIDO DE LA TABLA
+    $("#tabla_ubicaciones").html(resultado); //EL RESULTADO DEL SCRIPT PHP SUSTITUYE EL CONTENIDO DE LA TABLA
   });
 } // ******** COMPLETADO ********
 /**
@@ -262,4 +262,118 @@ function cancelar_modificar_ubicacion(elemento) {
     "<button onclick='eliminar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar ubicación'><i class='fas fa-trash'></i></button>" +
     "<button onclick='modificar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar ubicación'><i class='fas fa-pen'></i></button>"
   );
+}
+// DOCUMENTAAAAAAAAAAAAAAAAAAR
+function ver_articulos(elemento) {
+  var fila, codigo;
+  fila = $(elemento).parent().siblings();
+  codigo = fila[0]['firstChild']['value']; // OBTENER EL CÓDIGO
+  $.post("../PHP/AJAX/UBICACIONES/cargar_articulos.php",
+  {
+    campo_codigo: codigo
+  },
+  function(resultado) {
+    if (resultado.substring(0, 6) == "<thead") { // SI NO HA DADO NINGÚN ERROR, MOSTRAR LAS OPCIONES DE CANCELAR INVENTARIADO/CONFIRMAR Y OCULTAR LAS OPCIONES DE GESTIÓN DE UBICACIONES.
+      $("#menu_acciones").hide(); // OCULTAR LA GESTIÓN DE LA UBICACIÓN
+      $("#menu_acciones_inventario").show(); // MOSTRAR LAS OPCIONES DE INVENTARIAR
+      $("#tabla_ubicaciones").html(resultado);
+      $.post("../PHP/AJAX/UBICACIONES/cargar_articulos_disponibles.php",
+      {
+        campo_codigo: codigo
+      },
+      function(resultado) {
+        $("#lista_ubicaciones_seleccionables").html(resultado);
+      });
+      $("#boton_confirmar_inventario").attr("onclick","confirmar_inventario('"+ codigo +"')");
+    } else { // EN CASO CONTRARIO MOSTRAR EL ERROR
+      $.alert({
+        title: "ERROR",
+        content: resultado,
+        columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+      });
+    }
+  });
+}
+// DOCUMENTAR
+function add_articulo(elemento) {
+  var codigo, descripcion;
+  codigo = $(elemento).val(); // OBTENER CÓDIGO DEL ARTÍCULO
+  descripcion = $("#" + codigo).text(); // OBTENER DESCRIPCIÓN DEL ARTÍCULO
+  $("#contenido_ubicaciones").append(
+                  "<tr id='" + codigo + "'>" +
+                    "<td><input type='text' name='campo_codigo' value='" + codigo + "' readonly></td>" +
+                    "<td><input type='text' name='campo_descripcion' value='" + descripcion + "' readonly></td>" +
+                    "<td><input type='number' name='campo_cantidad' value='0'></td>" +
+                    "<td>" +
+                    "  <button onclick='quitar_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar artículo'><i class='fas fa-trash'></i></button>" +
+                    "</td>" +
+                  "</tr>"); // AÑADIR EL ARTÍCULO A LA LISTA DE ARTÍCULOS DE LA UBICACIÓN
+  $("#" + codigo).remove(); // ELIMINAR EL ARTÍCULO DE LA LISTA DE ARTÍCULOS SELECCIONABLES SELECCIONABLES
+}
+// DOCUMENTAAAAAAAAAAAAAAAAAAR
+function cancelar_inventario() {
+  $("#menu_acciones").show();
+  $("#menu_acciones_inventario").hide();
+  recargar_ubicaciones();
+}
+// DOCUMENTAAAAAAAAAAAAAAAAAAR
+function quitar_articulo(elemento) {
+  var fila, codigo, descripcion;
+  fila = $(elemento).parent().siblings();
+  codigo = fila[0]['firstChild']['value']; // ALMACENAR EL CÓDIGO
+  descripcion = fila[1]['firstChild']['value']; // ALMACENAR EL DESCRIPCIÓN
+  $("#" + codigo).remove(); // ELIMINAR LA FILA
+  $("#lista_ubicaciones_seleccionables").append("<option id='" + codigo + "' value='" + codigo + "'>" + descripcion + "</option>"); // AÑADIR EL ARTÍCULO A LA LISTA DE ARTÍCULOS AÑADIBLES
+}
+// DOCUMENTAAAAAAAAAAAAAAAAAAR
+function confirmar_inventario(ubicacion) {
+  var fila, codigo, cantidad;
+  articulos_seleccionados = $("#contenido_ubicaciones").children();
+  if (articulos_seleccionados.length == 0) {
+    articulos_array = "ninguno";
+  } else {
+    // articulos_array = [];
+
+		// articulos_array[1]= [];
+		// articulos_array[1][0] = "BB00";
+		// articulos_array[1][1] = "3";
+    articulos_array = [];
+    for (var i = 0; i < articulos_seleccionados.length; i++) {
+      fila = $(articulos_seleccionados[i]).children();
+      codigo = fila[0]['firstChild']['value']; // ALMACENAR EL CÓDIGO
+      cantidad = fila[2]['firstChild']['value'];
+      if (cantidad.length == 0 || cantidad == 0) {
+        $.alert({
+          title: "ERROR",
+          content: "El campo cantidad no se puede dejar vacío ni a 0. Si el artículo no está en la ubicacion elimínalo haciendo click en la papelera.",
+          columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+        });
+        return false;
+      }
+      articulos_array[i]= [];
+      articulos_array[i][0] = codigo;
+  		articulos_array[i][1] = cantidad;
+    }
+  }
+  $.post("../PHP/AJAX/UBICACIONES/inventariar_articulos.php",
+  {
+    campo_ubicacion: ubicacion,
+    campo_articulos: articulos_array
+  },
+  function(resultado) {
+    if (resultado != "CORRECTO") {
+      $.alert({
+        title: "ERROR",
+        content: resultado,
+        columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+      });
+    } else {
+      $.alert({
+        title: "UBICACIÓN INVENTARIADA",
+        content: "Se ha inventariado correctamente la ubicación",
+        columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+      });
+      cancelar_inventario();
+    }
+  });
 }

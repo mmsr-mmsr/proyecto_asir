@@ -16,7 +16,17 @@
 		elseif ($resultado_ubicaciones === "NO UBICACIONES USUARIO") echo "Actualmente no puedes gestionar ninguna ubicación. Solicítale al administrador permisos sobre las ubicaciones necesarias.";
 		//SI NO SE HA PRODUCIDO NINGÚN ERROR, RECORREMOS EL ARRAY RESULTADO
 		else {
-			$resultado = "";
+			$resultado = "
+				<thead class='color_fuerte'>
+					<tr>
+						<th scope='col'>Código</th>
+						<th scope='col'>Descripción</th>
+						<th scope='col'>Observaciones</th>
+						<th scope='col'>Eliminar artículo</th>
+					</tr>
+				</thead>
+				<tbody id='contenido_ubicaciones'>
+			";
 			foreach ($resultado_ubicaciones as $ubicacion) { // RECORRER EL ARRAY OBTENIDO MOSTRANDO LOS DATOS
 				$resultado .= "
 				<tr>
@@ -24,13 +34,16 @@
 					<td><input type='text' name='campo_descripcion' value='".$ubicacion['descripcion']."' readonly></td>
 					<td><input type='text' name='campo_observaciones' value='".$ubicacion['observaciones']."' readonly></td>
 					<td>
-						<button onclick='ver_ubicaciones(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>
+						<button onclick='ver_articulos(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>
 						<button onclick='eliminar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar ubicación'><i class='fas fa-trash'></i></button>
 						<button onclick='modificar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar ubicación'><i class='fas fa-pen'></i></button>
 					</td>
 				</tr>
 				";
 			}
+			$resultado .= "
+				</tbody>
+			";
 			echo $resultado;
 		}
 	} else header('Location: /PHP/index.php'); // SI NO ES ADMINISTRADOR LE REDIRIGIMOS A LA PÁGINA PRINCIPAL

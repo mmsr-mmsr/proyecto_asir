@@ -36,7 +36,7 @@
 		$mail->Subject = $asunto;
 		$mail->Body    = $contenido;
 		$mail->AltBody = $contenido;
-		$mail->send();
+		//$mail->send();
 	}
 	/*
 		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA VALIDAR LAS CREDENCIALES DE UN USUARIO. DEVUELVE TRUE SI SON CORRECTAS O UNA STRING SI ALGO FALLA. SE ENCARGA DE FIJAR LA SESIÓN Y PERMITE FIJAR COOKIES
@@ -564,7 +564,192 @@
 			return "NO MODIFICADO";
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CARGAR DE LA BD (tabla stock) LOS ARTÍCULOS QUE TIENE ASOCIADOS UNA UBICACIÓN.
+		RESULTADO: DEVUELVE UN ARRAY EN CASO DE ENCONTRAR ARTÍCULOS, "NO ARTICULOS" EN CASO DE NO ENCONTRAR ARTÍCULOS, "FALLO CONSULTA" EN CASO DE FALLAR LA EJECUCIÓN, "ERROR EN LA BD" O "FALLO CÓDIGO" EN CASO DE NO SUMINISTRAR UN CÓDIGO
+		LLAMADA: ES LLAMADA DESDE cargar_articulos.php
+		PARÁMETROS:
+		- CÓDIGO: CÓDIGO DE LA UBICACIÓN. ES LA CLAVE PRIMARIA DE LA TABLE. NO PUEDE SER NULL. SE UTILIZA PARA SABER QUE UBICACIÓN LISTAR
+	*/
+	function ver_articulos_inventariados_por_ubicacion($codigo) {
+		// VALIDAR QUE SE HAYA INTRODUCIDO CÓDIGO
+		if (empty($codigo)) {
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar listar los artículos de una ubicación sin pasar un código desde la función ver_articulos_inventariados_por_ubicacion()", "error");
+			return "FALLO CODIGO";
+		}
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 
+		// VALIDAR QUE LA UBICACIÓN EXISTA
+		$sentencia = $conexion->prepare("SELECT COUNT(*) total FROM ubicaciones WHERE codigo = ?");
+		$sentencia->bind_param("s", $codigo);
+		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT COUNT(*) total FROM ubicaciones WHERE codigo = ?'".$codigo."' desde la función ver_articulos_inventariados_por_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} else {
+			$resultado_query = $sentencia->get_result();
+			$resultado_query = $resultado_query->fetch_assoc();
+			if ($resultado_query['total'] !== 1) {
+				$conexion->close();
+				registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar listar los artículos de una ubicación inexistente (".$codigo.") desde la función ver_articulos_inventariados_por_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+				return "FALLO UBICACION";
+			}
+		}
+		// CONSULTAR LOS ARTÍCULOS DE LA UBICACIÓN
+		$sentencia = $conexion->prepare("SELECT s.articulo codigo, (SELECT a.descripcion FROM articulos a WHERE a.codigo = s.articulo) descripcion, s.cantidad cantidad FROM stock s WHERE s.ubicacion = ? ORDER BY s.articulo");
+		$sentencia->bind_param("s", $codigo);
+		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT codigo, descripcion FROM articulos WHERE codigo IN (SELECT articulo FROM stock WHERE ubicacion = '".$codigo."' desde la función ver_articulos_inventariados_por_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} else {
+			$resultado_query = $sentencia->get_result();
+			if ($resultado_query->num_rows === 0) { // COMPROBAR SI NO TIENE ARTÍCULOS
+				$conexion->close();
+				return "NO ARTICULOS";
+			} else { // SI TIENE ARTÍCULOS RECORREMOS LA CONSULTA Y DEVOLVEMOS UN ARRAY CON EL RESULTADO
+				while ($fila = $resultado_query->fetch_assoc()) {
+					$resultado[] = $fila;
+				}
+				$conexion->close();
+				return $resultado;
+			}
+		}
+	}
+	/*DOCUMENTAR*/
+	function ver_articulos_no_inventariados_por_ubicacion($codigo) {
+		// VALIDAR QUE SE HAYA INTRODUCIDO CÓDIGO
+		if (empty($codigo)) {
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar listar los artículos que no tiene una ubicación sin pasar un código desde la función ver_articulos_no_inventariados_por_ubicacion()", "error");
+			return "FALLO CODIGO";
+		}
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+
+		// VALIDAR QUE LA UBICACIÓN EXISTA
+		$sentencia = $conexion->prepare("SELECT COUNT(*) total FROM ubicaciones WHERE codigo = ?");
+		$sentencia->bind_param("s", $codigo);
+		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT COUNT(*) total FROM ubicaciones WHERE codigo = ?'".$codigo."' desde la función ver_articulos_por_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} else {
+			$resultado_query = $sentencia->get_result();
+			$resultado_query = $resultado_query->fetch_assoc();
+			if ($resultado_query['total'] !== 1) {
+				$conexion->close();
+				registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar listar los artículos de una ubicación inexistente (".$codigo.") desde la función ver_articulos_no_inventariados_por_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+				return "FALLO UBICACION";
+			}
+		}
+		// CONSULTAR LOS ARTÍCULOS QUE NO TIENE UNA UBICACIÓN
+		$sentencia = $conexion->prepare("SELECT codigo, descripcion FROM articulos WHERE codigo NOT IN (SELECT articulo FROM stock WHERE ubicacion = ? )");
+		$sentencia->bind_param("s", $codigo);
+		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT codigo, descripcion FROM articulos WHERE codigo NOT IN (SELECT articulo FROM stock WHERE ubicacion = '".$codigo."') desde la función ver_articulos_no_inventariados_por_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} else {
+			$resultado_query = $sentencia->get_result();
+			if ($resultado_query->num_rows === 0) { // COMPROBAR SI NO TIENE ARTÍCULOS
+				$conexion->close();
+				return "NO ARTICULOS";
+			} else { // SI TIENE ARTÍCULOS RECORREMOS LA CONSULTA Y DEVOLVEMOS UN ARRAY CON EL RESULTADO
+				while ($fila = $resultado_query->fetch_assoc()) {
+					$resultado[] = $fila;
+				}
+				$conexion->close();
+				return $resultado;
+			}
+		}
+	}
+	// DOCUMENTAAAAAAAAAAAAAAAAAAR
+	function validar_permisos_inventariar($ubicacion, $usuario) {
+		if (empty($ubicacion)) {
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar comprobar los permisos de un usuario sin pasar la ubicación desde la función validar_permisos_inventariar()", "error");
+			return "FALLO CODIGO";
+		}
+		if ($_SESSION['tipo'] === "administrador") return "PERMISOS CORRECTOS";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+
+		// VALIDAR QUE LA UBICACIÓN EXISTA
+		$sentencia = $conexion->prepare("SELECT COUNT(*) total FROM gestiona WHERE ubicacion = ? AND usuario = ?");
+		$sentencia->bind_param("ss", $ubicacion, $usuario);
+		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "SELECT COUNT(*) total FROM gestiona WHERE ubicacion = '".$ubicacion."' AND usuario = '".$usuario."' desde la función ver_articulos_por_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} else {
+			$resultado_query = $sentencia->get_result();
+			$resultado_query = $resultado_query->fetch_assoc();
+			if ($resultado_query['total'] !== 1) {
+				$conexion->close();
+				return "FALLO PERMISOS";
+			} else {
+				$conexion->close();
+				return "PERMISOS CORRECTOS";
+			}
+		}
+	}
+// DOCUMENTAAAAAAAAAAAAAAAAAAR
+	function inventariar_ubicacion($ubicacion, $articulos) {
+		if (empty($ubicacion)) {
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar inventariar una ubicación ya que no se ha pasado el código de la ubicación desde la función inventariar_ubicacion()", "error");
+			return "FALLO CÓDIGO";
+		}
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+
+		// VALIDAR QUE LA UBICACIÓN EXISTA
+		$sentencia = $conexion->prepare("SELECT COUNT(*) total FROM ubicaciones WHERE codigo = ?");
+		$sentencia->bind_param("s", $ubicacion);
+		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT COUNT(*) total FROM ubicaciones WHERE codigo = ?'".$ubicacion."' desde la función inventariar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		}
+		$resultado_query = $sentencia->get_result();
+		$resultado_query = $resultado_query->fetch_assoc();
+		if ($resultado_query['total'] !== 1) {
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar inventariar una ubicación inexistente (".$ubicacion.") desde la función inventariar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO UBICACION";
+		} else {
+			$sentencia = $conexion->prepare("DELETE FROM stock WHERE ubicacion = ?");
+			$sentencia->bind_param("s", $ubicacion);
+			if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+				$conexion->close();
+				registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT COUNT(*) total FROM ubicaciones WHERE codigo = ?'".$ubicacion."' desde la función inventariar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+				return "FALLO CONSULTA";
+			}
+			if ($articulos == "ninguno") {
+				$conexion->close();
+				return True;
+			}
+			$conexion->autocommit(false); // INICIAR TRANSACCIÓN
+			$sentencia = $conexion->prepare("INSERT INTO stock VALUES (? , ?, ?)");
+			$sentencia->bind_param("ssi", $ubicacion, $codigo, $cantidad);
+			//RECORRER EL ARRAY DE UBICACIONES, SI UNA INSERCIÓN FALLA HACEMOS ROLLBACK Y DEVOLVEMOS FALSE
+			foreach ($articulos as $articulo) {
+				$codigo = $articulo[0];
+				$cantidad = $articulo[1];
+				if (empty($cantidad) or !preg_match('/^[1-9]*$/', $cantidad)) {
+					$conexion->rollback();
+					$conexion->close();
+					return "FALLO CANTIDAD";
+				}
+				if (!$sentencia->execute()) {
+					registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO stock VALUES ('".$ubicacion."', '".$codigo."', '".$cantidad."') desde la función inventariar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+					$conexion->rollback(); // SI LA CONSULTA FALLA CANCELAMOS LA TRANSACCIÓN
+					return "FALLO CONSULTA";
+				}
+			}
+			$conexion->commit();
+			return True;
+		}
+	}
 	// FUNCIONES  PARA LA GESTIÓN DE ARTÍCULOS //
 	/*
 		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CARGAR LOS ARTÍCULOS DE LA BASE DE DATOS. PERMITE MOSTRAR TODOS LOS ARTÍCULOS O FILTRARLOS POR NOMBRE/DESCRIPCIÓN.
