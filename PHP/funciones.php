@@ -911,13 +911,7 @@
 	}
 
 	// FUNCIONES  PARA LA GESTIÓN DE LOGS //
-	/*
-		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CARGAR LOS LOGS DE LA BASE DE DATOS. PERMITE MOSTRAR TODOS LOS ARTÍCULOS O FILTRARLOS
-		RESULTADO: DEVUELVE UN ARRAY CON LOS LOGS EN CASO DE ENCONTRAR RESULTADOS, "ERROR EN LA BD" EN CASO DE FALLAR LA CONEXIÓN CON LA BD, "FALLO CONSULTA" EN CASO FALLAR LA CONSULTA, "NO ARTÍCULOS" EN CASO DE QUE NO ENCUENTRE ARTÍCULOS
-		LLAMADA: ES LLAMADA CADA VEZ QUE SE CARGA LA PÁGINA ARTÍCULOS O DESDE AJAX (recargar_articulos.php)
-		PARÁMETROS:
-		- FILTRO: INDICA EL FILTRO UTILIZADO PARA MOSTRAR LOS ARTÍCULOS.
-	*/
+	// DOCUMENTAR
 	function ver_logs($indice = 0, $inicio = "", $fin = "", $usuario = "", $descripcion = "", $tipo = "") {
 		$conexion = conexion_database();
 		$indice = $indice * 10;
@@ -951,6 +945,7 @@
 			}
 		}
 	}
+	// DOCUMENTAR
 	function contar_logs($inicio = "", $fin = "", $usuario = "", $descripcion = "", $tipo = "") {
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
@@ -976,4 +971,244 @@
 		}
 	}
 
+	// FUNCIONES  PARA LA GESTIÓN DE DATOS (EXPORTAR/IMPORTAR) //
+	function exportar_csv_consulta($consulta) {
+		if (empty($consulta)) return "CONSULTA VACIA";
+		$consulta = strtolower($consulta); // PASAR A MINÚSCULAS LA CADENA PARA EVITAR ERRORES
+		$sqli = array("delete", "drop", "truncate", "update", "insert", "create", "commit", "rollback", "--", "#", "/*");
+		// COMPROBAR QUE LA CONSULTA NO CONTIENE DML, DCL ni DDL PARA EVITAR SQL INJECTION
+		foreach ($sqli as $instruccion) {
+			if (stripos($consulta, $instruccion) !== False) {
+				registrar_evento(time(), $_SESSION['email'], "Se ha intentado realizar SQL INJECTION desde la función exportar_csv_consulta con la sentencia ".$consulta, "error");
+				return "SQL INJECTION";
+			}
+		}
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+
+		$resultado_query = $conexion->query($consulta); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA ES ERRÓNEA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha intentado ejecutar una consulta errónea desde la función exportar_csv_consulta(".$consulta.")", "error");
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$fichero = "";
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+				}
+				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+			}
+			//echo $fichero;
+			header('Content-Type: text/csv; charset=utf-8');
+			header("Content-Disposition: attachment; filename=consulta.csv");
+			// apt-get install php7.0-xml php7.0-mbstring
+			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			$conexion->close();
+		}
+	}
+	function exportar_csv_tabla_articulos() {
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM articulos"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM articulos desde la función exportar_csv_tabla_articulos", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$fichero = "";
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+				}
+				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+			}
+			header('Content-Type: text/csv; charset=utf-8');
+			header("Content-Disposition: attachment; filename=articulos.csv");
+			// apt-get install php7.0-xml php7.0-mbstring
+			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			$conexion->close();
+		}
+	}
+	function exportar_csv_tabla_ubicaciones() {
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM ubicaciones"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM ubicaciones desde la función exportar_csv_tabla_ubicaciones", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$fichero = "";
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+				}
+				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+			}
+			header('Content-Type: text/csv; charset=utf-8');
+			header("Content-Disposition: attachment; filename=ubicaciones.csv");
+			// apt-get install php7.0-xml php7.0-mbstring
+			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			$conexion->close();
+		}
+	}
+	function exportar_csv_tabla_usuarios() {
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM usuarios"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM usuarios desde la función exportar_csv_tabla_usuarios", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$fichero = "";
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+				}
+				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+			}
+			header('Content-Type: text/csv; charset=utf-8');
+			header("Content-Disposition: attachment; filename=usuarios.csv");
+			// apt-get install php7.0-xml php7.0-mbstring
+			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			$conexion->close();
+		}
+	}
+	function exportar_csv_tabla_stock() {
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM stock"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM stock desde la función exportar_csv_tabla_stock", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$fichero = "";
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+				}
+				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+			}
+			header('Content-Type: text/csv; charset=utf-8');
+			header("Content-Disposition: attachment; filename=stock.csv");
+			// apt-get install php7.0-xml php7.0-mbstring
+			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			$conexion->close();
+		}
+	}
+	function exportar_csv_tabla_gestiona() {
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM gestiona"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM gestiona desde la función exportar_csv_tabla_articulos", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$fichero = "";
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+				}
+				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+			}
+			header('Content-Type: text/csv; charset=utf-8');
+			header("Content-Disposition: attachment; filename=gestiona.csv");
+			// apt-get install php7.0-xml php7.0-mbstring
+			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			$conexion->close();
+		}
+	}
+	function exportar_csv_contenido_ubicacion($ubicacion) {
+		if (empty($ubicacion)) return "CONSULTA VACIA";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$sentencia = $conexion->prepare("SELECT a.codigo, a.descripcion, a.observaciones, s.cantidad FROM stock s LEFT JOIN articulos a ON s.articulo = a.codigo WHERE s.ubicacion = ?");
+		$sentencia->bind_param("s", $ubicacion);
+		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT a.codigo, a.descripcion, a.observaciones, s.cantidad FROM stock s LEFT JOIN articulos a ON s.articulo = a.codigo WHERE s.ubicacion = '".$ubicacion."' desde la funcion exportar_csv_contenido_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} else {
+			$resultado_query = $sentencia->get_result();
+			if ($resultado_query->num_rows == 0) { // COMPROBAR SI HA DEVULETO FILAS
+				$conexion->close();
+				return "CONSULTA SIN RESULTADOS";
+			} else {
+				$fichero = "";
+				while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+					foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+						$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+					}
+					$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+					$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+				}
+				header('Content-Type: text/csv; charset=utf-8');
+				header("Content-Disposition: attachment; filename=".$ubicacion.".csv");
+				// apt-get install php7.0-xml php7.0-mbstring
+				echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+				$conexion->close();
+			}
+		}
+	}
+
+	function exportar_csv_ubicaciones($articulo) {
+		if (empty($articulo)) return "CONSULTA VACIA";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$sentencia = $conexion->prepare("SELECT u.codigo, u.descripcion, u.observaciones FROM ubicaciones u WHERE u.codigo IN (SELECT ubicacion FROM stock WHERE articulo = ? )");
+		$sentencia->bind_param("s", $articulo);
+		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT u.codigo, u.descripcion, u.observaciones FROM ubicaciones u WHERE u.codigo IN (SELECT ubicacion FROM stock WHERE articulo = '".$articulo."') desde la funcion exportar_csv_ubicaciones()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} else {
+			$resultado_query = $sentencia->get_result();
+			if ($resultado_query->num_rows == 0) { // COMPROBAR SI HA DEVULETO FILAS
+				$conexion->close();
+				return "CONSULTA SIN RESULTADOS";
+			} else {
+				$fichero = "";
+				while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+					foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+						$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+					}
+					$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+					$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+				}
+				header('Content-Type: text/csv; charset=utf-8');
+				header("Content-Disposition: attachment; filename=ubicaciones_de_".$articulo.".csv");
+				// apt-get install php7.0-xml php7.0-mbstring
+				echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+				$conexion->close();
+			}
+		}
+	}
 ?>

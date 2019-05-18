@@ -104,6 +104,7 @@
 		<li class='nav-item'>
 			<button onclick='buscar_logs()' type='button' class='nav-link' id='search-tab' data-toggle='tab' role='tab' aria-controls='search' aria-selected='false'><i class='fas fa-search'></i></button>
 		</li>
+	</ul>
 <?php
 	$resultado_logs = ver_logs(0);
 	if ($resultado_logs === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Prueba a conectarse más tarde.";
