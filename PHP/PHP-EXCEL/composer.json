@@ -1,0 +1,5 @@
+{
+    "require": {
+        "slam/php-excel": "^4.2"
+    }
+}

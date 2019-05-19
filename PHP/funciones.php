@@ -1,7 +1,7 @@
 <?php
 	use PHPMailer\PHPMailer\PHPMailer;
 	use PHPMailer\PHPMailer\Exception;
-
+	use Slam\Excel\Helper as ExcelHelper;
 	// FUNCIONES GENÉRICAS DE LA APLICACIÓN //
 	/*
 		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CONECTARSE A LA BASE DE DATOS. ENVÍA UN CORREO EN CASO DE FALLAR LA BD.
@@ -972,6 +972,7 @@
 	}
 
 	// FUNCIONES  PARA LA GESTIÓN DE DATOS (EXPORTAR/IMPORTAR) //
+	// EXPORTAR CSV
 	function exportar_csv_consulta($consulta) {
 		if (empty($consulta)) return "CONSULTA VACIA";
 		$consulta = strtolower($consulta); // PASAR A MINÚSCULAS LA CADENA PARA EVITAR ERRORES
@@ -1146,6 +1147,33 @@
 			$conexion->close();
 		}
 	}
+	function exportar_csv_tabla_logs() {
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM logs"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM logs desde la función exportar_csv_tabla_logs", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$fichero = "";
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+				}
+				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+			}
+			header('Content-Type: text/csv; charset=utf-8');
+			header("Content-Disposition: attachment; filename=logs.csv");
+			// apt-get install php7.0-xml php7.0-mbstring
+			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			$conexion->close();
+		}
+	}
 	function exportar_csv_contenido_ubicacion($ubicacion) {
 		if (empty($ubicacion)) return "CONSULTA VACIA";
 		$conexion = conexion_database();
@@ -1178,7 +1206,6 @@
 			}
 		}
 	}
-
 	function exportar_csv_ubicaciones($articulo) {
 		if (empty($articulo)) return "CONSULTA VACIA";
 		$conexion = conexion_database();
@@ -1211,4 +1238,458 @@
 			}
 		}
 	}
+
+	// EXPORTAR EXCEL
+	function exportar_excel_consulta($consulta) {
+		require "PHP-EXCEL/vendor/autoload.php";
+		if (empty($consulta)) return "CONSULTA VACIA";
+		$consulta = strtolower($consulta); // PASAR A MINÚSCULAS LA CADENA PARA EVITAR ERRORES
+		$sqli = array("delete", "drop", "truncate", "update", "insert", "create", "commit", "rollback", "--", "#", "/*");
+		// COMPROBAR QUE LA CONSULTA NO CONTIENE DML, DCL ni DDL PARA EVITAR SQL INJECTION
+		foreach ($sqli as $instruccion) {
+			if (stripos($consulta, $instruccion) !== False) {
+				registrar_evento(time(), $_SESSION['email'], "Se ha intentado realizar SQL INJECTION desde la función exportar_csv_consulta con la sentencia ".$consulta, "error");
+				return "SQL INJECTION";
+			}
+		}
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+
+		$resultado_query = $conexion->query($consulta); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA ES ERRÓNEA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha intentado ejecutar una consulta errónea desde la función exportar_csv_consulta(".$consulta.")", "error");
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$contenido = array();
+			$contador = 0;
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$cabeceras[$indice] = $indice;
+					$contenido[$contador][$indice] = $campo; // AÑADIMOS CAMPOS AL FICHERO
+				}
+				$contador++;
+			}
+			$conexion->close();
+			$contenido = new ArrayIterator($contenido);
+			foreach ($cabeceras as $cabecera) {
+				$cabecera_string[] = new ExcelHelper\Column('".$cabecera."',  '".$cabecera."',     10,     new ExcelHelper\CellStyle\Text());
+			}
+			$columnCollection = new ExcelHelper\ColumnCollection($cabecera_string);
+			$filename = sprintf('%s/consulta.xls', __DIR__, uniqid());
+			$phpExcel = new ExcelHelper\TableWorkbook($filename);
+			$worksheet = $phpExcel->addWorksheet("Consulta");
+			$table = new ExcelHelper\Table($worksheet, 0, 0, $consulta, $contenido);
+			$table->setColumnCollection($columnCollection);
+			$phpExcel->writeTable($table);
+			$phpExcel->close();
+			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
+			header('Content-Disposition: attachment; filename="consulta.xls"');
+			readfile("consulta.xls");
+			unlink("consulta.xls");
+			// apt-get install php7.0-xml php7.0-mbstring
+
+		}
+	}
+	function exportar_excel_tabla_articulos() {
+		require "PHP-EXCEL/vendor/autoload.php";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM articulos"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM articulos desde la función exportar_excel_tabla_articulos", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$contenido = array();
+			$contador = 0;
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$contenido[$contador][$indice] = $campo; // AÑADIMOS LOS CAMPOS AL ARRAY CONTENIDO
+				}
+				$contador++;
+			}
+			$conexion->close();
+
+			// GENERAR EL EXCEL
+			$contenido = new ArrayIterator($contenido);
+			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
+			    new ExcelHelper\Column('codigo',  'Código',     10,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('descripcion',  'Descripción',   15,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('observaciones',  'Observaciones',     15,     new ExcelHelper\CellStyle\Text())
+			]);
+			$filename = sprintf('%s/articulos.xls', __DIR__, uniqid()); // NOMBRAR EL FICHERO
+			$phpExcel = new ExcelHelper\TableWorkbook($filename); // CREAR EL FICHERO
+			$worksheet = $phpExcel->addWorksheet('Articulos'); // DARLE NOMBRE A LA HOJA
+			$table = new ExcelHelper\Table($worksheet, 0, 0, 'Contenido de la tabla artículos', $contenido);
+			$table->setColumnCollection($columnCollection);
+			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
+			$phpExcel->close();
+			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
+			header('Content-Disposition: attachment; filename="articulos.xls"');
+			readfile("articulos.xls"); // DESCARGARLO EN EL CLIENTE
+			unlink("articulos.xls"); // BORRAR EL FICHERO
+		}
+	}
+	function exportar_excel_tabla_ubicaciones() {
+		require "PHP-EXCEL/vendor/autoload.php";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM ubicaciones"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM ubicaciones desde la función exportar_excel_tabla_ubicaciones", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$contenido = array();
+			$contador = 0;
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$contenido[$contador][$indice] = $campo; // AÑADIMOS LOS CAMPOS AL ARRAY CONTENIDO
+				}
+				$contador++;
+			}
+			$conexion->close();
+
+			// GENERAR EL EXCEL
+			$contenido = new ArrayIterator($contenido);
+			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
+			    new ExcelHelper\Column('codigo',  'Código',     10,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('descripcion',  'Descripción',   15,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('observaciones',  'Observaciones',     15,     new ExcelHelper\CellStyle\Text())
+			]);
+			$filename = sprintf('%s/ubicaciones.xls', __DIR__, uniqid()); // NOMBRAR EL FICHERO
+			$phpExcel = new ExcelHelper\TableWorkbook($filename); // CREAR EL FICHERO
+			$worksheet = $phpExcel->addWorksheet('Ubicaciones'); // DARLE NOMBRE A LA HOJA
+			$table = new ExcelHelper\Table($worksheet, 0, 0, 'Contenido de la tabla ubicaciones', $contenido);
+			$table->setColumnCollection($columnCollection);
+			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
+			$phpExcel->close();
+			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
+			header('Content-Disposition: attachment; filename="ubicaciones.xls"');
+			readfile("ubicaciones.xls"); // DESCARGARLO EN EL CLIENTE
+			unlink("ubicaciones.xls"); // BORRAR EL FICHERO
+		}
+	}
+	function exportar_excel_tabla_usuarios() {
+		require "PHP-EXCEL/vendor/autoload.php";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM usuarios"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM usuarios desde la función exportar_excel_tabla_usuarios", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$contenido = array();
+			$contador = 0;
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$contenido[$contador][$indice] = $campo; // AÑADIMOS LOS CAMPOS AL ARRAY CONTENIDO
+				}
+				$contador++;
+			}
+			$conexion->close();
+
+			// GENERAR EL EXCEL
+			$contenido = new ArrayIterator($contenido);
+			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
+			    new ExcelHelper\Column('email',  'Código',     10,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('password',  'Contraseña',   15,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('nombre',  'Nombre',     15,     new ExcelHelper\CellStyle\Text()),
+					new ExcelHelper\Column('tipo',  'Tipo de usuario',     15,     new ExcelHelper\CellStyle\Text())
+			]);
+			$filename = sprintf('%s/usuarios.xls', __DIR__, uniqid()); // NOMBRAR EL FICHERO
+			$phpExcel = new ExcelHelper\TableWorkbook($filename); // CREAR EL FICHERO
+			$worksheet = $phpExcel->addWorksheet('Usuarios'); // DARLE NOMBRE A LA HOJA
+			$table = new ExcelHelper\Table($worksheet, 0, 0, 'Contenido de la tabla usuarios', $contenido);
+			$table->setColumnCollection($columnCollection);
+			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
+			$phpExcel->close();
+			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
+			header('Content-Disposition: attachment; filename="usuarios.xls"');
+			readfile("usuarios.xls"); // DESCARGARLO EN EL CLIENTE
+			unlink("usuarios.xls"); // BORRAR EL FICHERO
+		}
+	}
+	function exportar_excel_tabla_stock() {
+		require "PHP-EXCEL/vendor/autoload.php";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM stock"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM stock desde la función exportar_excel_tabla_stock", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$contenido = array();
+			$contador = 0;
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$contenido[$contador][$indice] = $campo; // AÑADIMOS LOS CAMPOS AL ARRAY CONTENIDO
+				}
+				$contador++;
+			}
+			$conexion->close();
+
+			// GENERAR EL EXCEL
+			$contenido = new ArrayIterator($contenido);
+			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
+			    new ExcelHelper\Column('ubicacion',  'Ubicación',     10,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('articulo',  'Artículo',   15,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('cantidad',  'Cantidad',     15,     new ExcelHelper\CellStyle\Text())
+			]);
+			$filename = sprintf('%s/stock.xls', __DIR__, uniqid()); // NOMBRAR EL FICHERO
+			$phpExcel = new ExcelHelper\TableWorkbook($filename); // CREAR EL FICHERO
+			$worksheet = $phpExcel->addWorksheet("Stock de las ubicaciones"); // DARLE NOMBRE A LA HOJA
+			$table = new ExcelHelper\Table($worksheet, 0, 0, 'Contenido de la tabla stock', $contenido);
+			$table->setColumnCollection($columnCollection);
+			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
+			$phpExcel->close();
+			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
+			header('Content-Disposition: attachment; filename="stock.xls"');
+			readfile("stock.xls"); // DESCARGARLO EN EL CLIENTE
+			unlink("stock.xls"); // BORRAR EL FICHERO
+		}
+	}
+	function exportar_excel_tabla_gestiona() {
+		require "PHP-EXCEL/vendor/autoload.php";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM gestiona"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM gestiona desde la función exportar_excel_tabla_gestiona", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$contenido = array();
+			$contador = 0;
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$contenido[$contador][$indice] = $campo; // AÑADIMOS LOS CAMPOS AL ARRAY CONTENIDO
+				}
+				$contador++;
+			}
+			$conexion->close();
+
+			// GENERAR EL EXCEL
+			$contenido = new ArrayIterator($contenido);
+			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
+			    new ExcelHelper\Column('ubicacion',  'Ubicación',     10,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('usuario',  'Usuario',   15,     new ExcelHelper\CellStyle\Text())
+			]);
+			$filename = sprintf('%s/gestiona.xls', __DIR__, uniqid()); // NOMBRAR EL FICHERO
+			$phpExcel = new ExcelHelper\TableWorkbook($filename); // CREAR EL FICHERO
+			$worksheet = $phpExcel->addWorksheet("Permisos sobre las ubicaciones"); // DARLE NOMBRE A LA HOJA
+			$table = new ExcelHelper\Table($worksheet, 0, 0, 'Contenido de la tabla gestiona', $contenido);
+			$table->setColumnCollection($columnCollection);
+			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
+			$phpExcel->close();
+			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
+			header('Content-Disposition: attachment; filename="gestiona.xls"');
+			readfile("gestiona.xls"); // DESCARGARLO EN EL CLIENTE
+			unlink("gestiona.xls"); // BORRAR EL FICHERO
+		}
+	}
+	function exportar_excel_tabla_logs() {
+		require "PHP-EXCEL/vendor/autoload.php";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM logs"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM logs desde la función exportar_excel_tabla_logs", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$contenido = array();
+			$contador = 0;
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					if ($indice === "fecha") $campo = date("d/m/Y H:i:s", $campo);
+					$contenido[$contador][$indice] = $campo; // AÑADIMOS LOS CAMPOS AL ARRAY CONTENIDO
+				}
+				$contador++;
+			}
+			$conexion->close();
+
+			// GENERAR EL EXCEL
+			$contenido = new ArrayIterator($contenido);
+			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
+			    new ExcelHelper\Column('fecha',  'Fecha',     10,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('usuario',  'Usuario',   15,     new ExcelHelper\CellStyle\Text()),
+					new ExcelHelper\Column('descripcion',  'Descripción del log',   15,     new ExcelHelper\CellStyle\Text()),
+					new ExcelHelper\Column('tipo',  'Tipo de log',   15,     new ExcelHelper\CellStyle\Text())
+			]);
+			$filename = sprintf('%s/logs.xls', __DIR__, uniqid()); // NOMBRAR EL FICHERO
+			$phpExcel = new ExcelHelper\TableWorkbook($filename); // CREAR EL FICHERO
+			$worksheet = $phpExcel->addWorksheet("Logs"); // DARLE NOMBRE A LA HOJA
+			$table = new ExcelHelper\Table($worksheet, 0, 0, 'Contenido de la tabla logs', $contenido);
+			$table->setColumnCollection($columnCollection);
+			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
+			$phpExcel->close();
+			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
+			header('Content-Disposition: attachment; filename="logs.xls"');
+			readfile("logs.xls"); // DESCARGARLO EN EL CLIENTE
+			unlink("logs.xls"); // BORRAR EL FICHERO
+		}
+	}
+	function exportar_excel_contenido_ubicacion($ubicacion) {
+		require "PHP-EXCEL/vendor/autoload.php";
+		if (empty($ubicacion)) return "CONSULTA VACIA";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$sentencia = $conexion->prepare("SELECT a.codigo codigo, a.descripcion descripcion, a.observaciones observaciones, s.cantidad cantidad FROM stock s LEFT JOIN articulos a ON s.articulo = a.codigo WHERE s.ubicacion = ?");
+		$sentencia->bind_param("s", $ubicacion);
+		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT a.codigo codigo, a.descripcion descripcion, a.observaciones observaciones, s.cantidad cantidad FROM stock s LEFT JOIN articulos a ON s.articulo = a.codigo WHERE s.ubicacion = '".$ubicacion."' desde la funcion exportar_excel_contenido_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} else {
+			$resultado_query = $sentencia->get_result();
+			if ($resultado_query->num_rows == 0) { // COMPROBAR SI HA DEVULETO FILAS
+				$conexion->close();
+				return "CONSULTA SIN RESULTADOS";
+			} else {
+				$contenido = array();
+				$contador = 0;
+				while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+					foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+						$contenido[$contador][$indice] = $campo; // AÑADIMOS LOS CAMPOS AL ARRAY CONTENIDO
+					}
+					$contador++;
+				}
+				$conexion->close();
+
+				// GENERAR EL EXCEL
+				$contenido = new ArrayIterator($contenido);
+				$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
+				    new ExcelHelper\Column('codigo',  'Código',     10,     new ExcelHelper\CellStyle\Text()),
+				    new ExcelHelper\Column('descripcion',  'Descripción',   15,     new ExcelHelper\CellStyle\Text()),
+						new ExcelHelper\Column('observaciones',  'Observaciones',   15,     new ExcelHelper\CellStyle\Text()),
+						new ExcelHelper\Column('cantidad',  'Cantidad',   15,     new ExcelHelper\CellStyle\Text())
+				]);
+				$filename = sprintf('%s/'.$ubicacion.'.xls', __DIR__, uniqid()); // NOMBRAR EL FICHERO
+				$phpExcel = new ExcelHelper\TableWorkbook($filename); // CREAR EL FICHERO
+				$worksheet = $phpExcel->addWorksheet($ubicacion); // DARLE NOMBRE A LA HOJA
+				$table = new ExcelHelper\Table($worksheet, 0, 0, 'Contenido de la ubicación '.$ubicacion, $contenido);
+				$table->setColumnCollection($columnCollection);
+				$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
+				$phpExcel->close();
+				header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
+				header('Content-Disposition: attachment; filename="'.$ubicacion.'.xls"');
+				readfile($ubicacion.".xls"); // DESCARGARLO EN EL CLIENTE
+				unlink($ubicacion.".xls"); // BORRAR EL FICHERO
+			}
+		}
+	}
+	function exportar_excel_ubicaciones($articulo) {
+		require "PHP-EXCEL/vendor/autoload.php";
+		if (empty($articulo)) return "CONSULTA VACIA";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$sentencia = $conexion->prepare("SELECT u.codigo codigo, u.descripcion descripcion, u.observaciones observaciones FROM ubicaciones u WHERE u.codigo IN (SELECT ubicacion FROM stock WHERE articulo = ? )");
+		$sentencia->bind_param("s", $articulo);
+		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT u.codigo, u.descripcion, u.observaciones FROM ubicaciones u WHERE u.codigo IN (SELECT ubicacion FROM stock WHERE articulo = '".$articulo."') desde la funcion exportar_excel_ubicaciones()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} else {
+			$resultado_query = $sentencia->get_result();
+			if ($resultado_query->num_rows == 0) { // COMPROBAR SI HA DEVULETO FILAS
+				$conexion->close();
+				return "CONSULTA SIN RESULTADOS";
+			} else {
+				$contenido = array();
+				$contador = 0;
+				while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+					foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+						$contenido[$contador][$indice] = $campo; // AÑADIMOS LOS CAMPOS AL ARRAY CONTENIDO
+					}
+					$contador++;
+				}
+				$conexion->close();
+
+				// GENERAR EL EXCEL
+				$contenido = new ArrayIterator($contenido);
+				$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
+						new ExcelHelper\Column('codigo',  'Código',     10,     new ExcelHelper\CellStyle\Text()),
+						new ExcelHelper\Column('descripcion',  'Descripción',   15,     new ExcelHelper\CellStyle\Text()),
+						new ExcelHelper\Column('observaciones',  'Observaciones',   15,     new ExcelHelper\CellStyle\Text())
+				]);
+				$filename = sprintf('%s/'.$articulo.'.xls', __DIR__, uniqid()); // NOMBRAR EL FICHERO
+				$phpExcel = new ExcelHelper\TableWorkbook($filename); // CREAR EL FICHERO
+				$worksheet = $phpExcel->addWorksheet($articulo); // DARLE NOMBRE A LA HOJA
+				$table = new ExcelHelper\Table($worksheet, 0, 0, 'Ubicaciones donde esta '.$articulo, $contenido);
+				$table->setColumnCollection($columnCollection);
+				$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
+				$phpExcel->close();
+				header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
+				header('Content-Disposition: attachment; filename="'.$articulo.'.xls"');
+				readfile($articulo.".xls"); // DESCARGARLO EN EL CLIENTE
+				unlink($articulo.".xls"); // BORRAR EL FICHERO
+			}
+		}
+	}
+
+	// IMPORTAR DESDE CSV
+	function importar_csv_articulos($fichero) {
+		if (@$manejador_fichero=fopen($fichero, 'r')) { // ABRIR EL FICHERO EN MODO LECTURA
+			$conexion = conexion_database();
+			$contador = 1;
+			while (($linea = fgetcsv($manejador_fichero, 1000, ";")) !== FALSE) { // RECORRER EL FICHERO DIVIDIENDO LOS CAMPOS POR ";"
+				if (count($linea) != 3) $errores[] = "La línea ".$contador." ".implode(";", $linea)." no tiene un formato correcto"; // COMPROBAR QUE TIENE 3 CAMPOS
+				if (empty($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo código vacío y no se ha podido insertar"; // COMPROBAR QUE EL CÓDIGO NO ESTÁ VACÍO
+				elseif (empty($linea[1])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo descripción vacío y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
+				else {
+					$contenido[$contador][] = "";
+				}
+				$contador++;
+			}
+			return $errores;
+		} else {
+			registrar_evento(time(), $email, "Fallo al abrir el fichero para importar datos desde la función importar_csv_articulos()", "error"); // ANOTAR EVENTO EN LA BD
+			return "APERTURA FALLIDA";
+		}
+		fclose($manejador_fichero);
+		//readfile($fichero);
+	}
+
+	// $sentencia = $conexion->prepare("INSERT INTO stock VALUES (? , ?, ?)");
+	// $sentencia->bind_param("ssi", $ubicacion, $codigo, $cantidad);
+	// //RECORRER EL ARRAY DE UBICACIONES, SI UNA INSERCIÓN FALLA HACEMOS ROLLBACK Y DEVOLVEMOS FALSE
+	// foreach ($articulos as $articulo) {
+	// 	$codigo = $articulo[0];
+	// 	$cantidad = $articulo[1];
+	// 	if (empty($cantidad) or !preg_match('/^[1-9]*$/', $cantidad)) {
+	// 		$conexion->rollback();
+	// 		$conexion->close();
+	// 		return "FALLO CANTIDAD";
+	// 	}
+	// 	if (!$sentencia->execute()) {
+	// 		registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO stock VALUES ('".$ubicacion."', '".$codigo."', '".$cantidad."') desde la función inventariar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
+	// 		$conexion->rollback(); // SI LA CONSULTA FALLA CANCELAMOS LA TRANSACCIÓN
+	// 		return "FALLO CONSULTA";
+	// 	}
+	// }
 ?>

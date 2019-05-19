@@ -1,0 +1,63 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "48c6cc2637f89ce07df1c6571294fa47",
+    "packages": [
+        {
+            "name": "slam/php-excel",
+            "version": "v4.2.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Slamdunk/php-excel.git",
+                "reference": "a4df1f73f80c94bc3bd922c2a5181920165f1e33"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Slamdunk/php-excel/zipball/a4df1f73f80c94bc3bd922c2a5181920165f1e33",
+                "reference": "a4df1f73f80c94bc3bd922c2a5181920165f1e33",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.0"
+            },
+            "require-dev": {
+                "mikey179/vfsstream": "^1.6",
+                "phpoffice/phpexcel": "^1.8",
+                "phpunit/phpunit": "^6.2",
+                "roave/security-advisories": "dev-master",
+                "slam/php-cs-fixer-extensions": "^1.4",
+                "slam/php-debug-r": "^1.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Slam\\Excel\\": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Filippo Tessarotto",
+                    "email": "zoeslam@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Old faster PHPExcel",
+            "time": "2017-10-24T15:26:01+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": []
+}
