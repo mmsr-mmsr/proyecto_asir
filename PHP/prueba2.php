@@ -9,8 +9,16 @@
 	// }
   include "funciones.php";
   exportar_csv_tabla_ubicaciones();
+
+  $conexion = conexion_database();
+  for ($i=1000; $i < 2000; $i++) {
+    $conexion->query("INSERT INTO logs VALUES('".$i."', 'admin', '".$i."', 'login')");
+    //$conexion->query("INSERT INTO ubicaciones VALUES(1, 1, 1)");
+
+		//$conexion->execute();
+  }
   // $manejador_fichero=fopen("ubicaciones(2).csv", 'r');
-  // // $conexion = conexion_database();
+
   // while (!feof($manejador_fichero)) {
   //   //ALMACENAR CADA LÍNEA EN UN ARRAY SEPARANDO POR "|"
   //   $linea=explode(";", fgets($manejador_fichero));

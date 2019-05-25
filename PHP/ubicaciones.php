@@ -82,13 +82,6 @@
 <div class="container">
 	<a href="../PHP/index.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
 </div>
-<?php
-	$resultado_ubicaciones = ver_ubicaciones();
-	if ($resultado_ubicaciones === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Compruebe que el servicio esté funcionando correctamente. Pruebe a conectarse más tarde.";
-	elseif ($resultado_ubicaciones === "NO USUARIOS") echo "No se ha encontrado ningún usuario con el partón de búsqueda introducido";
-	elseif ($resultado_ubicaciones === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos de la BD. Pruebe a actualizar la página.";
-	else {
-?>
 <div class="col-xl-10 col-lg-12 offset-xl-1">
 		<ul class="nav nav-tabs" id="menu_acciones" role="tablist">
 			<li class="nav-item">
@@ -131,7 +124,7 @@
 			</li>
 		</ul>
 	<table id='tabla_ubicaciones' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
-		<thead class='color_fuerte'>
+		<thead id="cabecera_ubicaciones" class='color_fuerte'>
 			<tr>
 				<th scope='col'>Código</th>
 				<th scope='col'>Descripción</th>
@@ -141,25 +134,29 @@
 		</thead>
 		<tbody id="contenido_ubicaciones">
 <?php
-	foreach ($resultado_ubicaciones as $ubicacion) {
-		echo "
-			<tr>
-				<td><input type='text' name='campo_codigo' value='".$ubicacion['codigo']."' readonly></td>
-				<td><input type='text' name='campo_descripcion' value='".$ubicacion['descripcion']."' readonly></td>
-				<td><input type='text' name='campo_observaciones' value='".$ubicacion['observaciones']."' readonly></td>
-				<td>
-					<button onclick='ver_articulos(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver artículos'><i class='fas fa-search'></i></button>
-					<button onclick='eliminar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar ubicación'><i class='fas fa-trash'></i></button>
-					<button onclick='modificar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar ubicación'><i class='fas fa-pen'></i></button>
-				</td>
-			</tr>
-		";
-	}
+	$resultado_ubicaciones = ver_ubicaciones();
+	if ($resultado_ubicaciones === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Compruebe que el servicio esté funcionando correctamente. Pruebe a conectarse más tarde.";
+	elseif ($resultado_ubicaciones === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos de la BD. Pruebe a actualizar la página.";
+	elseif (is_array($resultado_ubicaciones)) {
+		foreach ($resultado_ubicaciones as $ubicacion) {
+			echo "
+				<tr>
+					<td><input type='text' name='campo_codigo' value='".$ubicacion['codigo']."' readonly></td>
+					<td><input type='text' name='campo_descripcion' value='".$ubicacion['descripcion']."' readonly></td>
+					<td><input type='text' name='campo_observaciones' value='".$ubicacion['observaciones']."' readonly></td>
+					<td>
+						<button onclick='ver_articulos(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver artículos'><i class='fas fa-search'></i></button>
+						<button onclick='eliminar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar ubicación'><i class='fas fa-trash'></i></button>
+						<button onclick='modificar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar ubicación'><i class='fas fa-pen'></i></button>
+					</td>
+				</tr>
+			";
+		}
 ?>
 			</tbody>
 		</table>
 <?php
-}
+	}
 ?>
 </div>
 <p id="id_resultado"></p>

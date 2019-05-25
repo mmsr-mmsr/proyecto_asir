@@ -14,7 +14,7 @@
 		elseif ($resultado_articulos_ubicacion === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos. Prueba a actualizar la página y volver a intentarlo.";
 		elseif ($resultado_articulos_ubicacion === "FALLO UBICACION") echo "La ubicación que ha tratado de listar no está disponible o no existe. Actualiza la página para recargar los datos.";
 		else {
-			$resultado = "<thead class='color_fuerte'>
+			$resultado = "<thead id='cabecera_ubicaciones' class='color_fuerte'>
 											<tr>
 												<th scope='col'>Código</th>
 												<th scope='col'>Descripción</th>

@@ -21,7 +21,16 @@ function recargar_articulos(filtro = "ninguno"){
     campo_filtro: filtro
   },
   function(resultado) {
-    $("#contenido_articulos").html(resultado); //EL RESULTADO DEL SCRIPT PHP SUSTITUYE EL CONTENIDO DE LA TABLA
+    if (resultado.substring(0,3) == "<tr") {
+      $("#contenido_articulos").html(resultado); //EL RESULTADO DEL SCRIPT PHP SUSTITUYE EL CONTENIDO DE LA TABLA
+    } else {
+      $("#contenido_articulos").html("");
+      $.alert({
+        title: "ERROR",
+        content: resultado,
+        columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+      });
+    }
   });
 }
 /**

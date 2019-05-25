@@ -102,13 +102,6 @@
 				}
 		?>
 	</ul>
-<?php
-	$resultado_articulos = ver_articulos();
-	if ($resultado_articulos === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Prueba a conectarse más tarde.";
-	elseif ($resultado_articulos === "NO ARTICULOS") echo "No se ha encontrado ningún artículo en la BD.";
-	elseif ($resultado_articulos === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos de la BD. Prueba a actualizar la página e intentarlo de nuevo.";
-	else {
-?>
 	<table id='tabla_articulos' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
 		<thead class='color_fuerte'>
 			<tr>
@@ -120,25 +113,27 @@
 		</thead>
 		<tbody id="contenido_articulos">
 <?php
-	foreach ($resultado_articulos as $articulo) {
-		echo "
-			<tr>
-				<td><input type='text' name='campo_codigo' value='".$articulo['codigo']."' readonly></td>
-				<td><input type='text' name='campo_descripcion' value='".$articulo['descripcion']."' readonly></td>
-				<td><input type='text' name='campo_observaciones' value='".$articulo['observaciones']."' readonly></td>
-				<td>
-					<button onclick='eliminar_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar artículo'><i class='fas fa-trash'></i></button>
-					<button onclick='modificar_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar artículo'><i class='fas fa-pen'></i></button>
-				</td>
-			</tr>
-		";
+	$resultado_articulos = ver_articulos();
+	if ($resultado_articulos === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Prueba a conectarse más tarde.";
+	elseif ($resultado_articulos === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos de la BD. Prueba a actualizar la página e intentarlo de nuevo.";
+	elseif (is_array($resultado_articulos)) {
+		foreach ($resultado_articulos as $articulo) {
+			echo "
+				<tr>
+					<td><input type='text' name='campo_codigo' value='".$articulo['codigo']."' readonly></td>
+					<td><input type='text' name='campo_descripcion' value='".$articulo['descripcion']."' readonly></td>
+					<td><input type='text' name='campo_observaciones' value='".$articulo['observaciones']."' readonly></td>
+					<td>
+						<button onclick='eliminar_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar artículo'><i class='fas fa-trash'></i></button>
+						<button onclick='modificar_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar artículo'><i class='fas fa-pen'></i></button>
+					</td>
+				</tr>
+			";
+		}
 	}
 ?>
 			</tbody>
 		</table>
-<?php
-}
-?>
 </div>
 <p id="id_resultado"></p>
 <script src="../JS/jquery-3.3.1.min.js"></script>

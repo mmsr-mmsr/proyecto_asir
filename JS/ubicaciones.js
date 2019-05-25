@@ -21,7 +21,24 @@ function recargar_ubicaciones(filtro = "ninguno"){
     campo_filtro: filtro
   },
   function(resultado) {
-    $("#tabla_ubicaciones").html(resultado); //EL RESULTADO DEL SCRIPT PHP SUSTITUYE EL CONTENIDO DE LA TABLA
+    if (resultado.substring(0,3) == "<tr") {
+      $("#cabecera_ubicaciones").html(
+        "<tr>" +
+  				"<th scope='col'>Código</th>" +
+  				"<th scope='col'>Descripción</th>" +
+  				"<th scope='col'>Observaciones</th>" +
+				  "<th scope='col'>Acciones</th>" +
+			   "</tr>"
+       );
+      $("#contenido_ubicaciones").html(resultado); //EL RESULTADO DEL SCRIPT PHP SUSTITUYE EL CONTENIDO DE LA TABLA
+    } else {
+      $("#contenido_ubicaciones").html("");
+      $.alert({
+        title: "ERROR",
+        content: resultado,
+        columnClass: "col-sm-12 col-md-12 col-lg-6 col-xl-6"
+      });
+    }
   });
 } // ******** COMPLETADO ********
 /**
@@ -277,6 +294,7 @@ function ver_articulos(elemento) {
       $("#menu_acciones").hide(); // OCULTAR LA GESTIÓN DE LA UBICACIÓN
       $("#menu_acciones_inventario").show(); // MOSTRAR LAS OPCIONES DE INVENTARIAR
       $("#tabla_ubicaciones").html(resultado);
+      // CARGAR LOS ARTÍCULOS DE LA BD A TRAVÉS DE AJAX
       $.post("../PHP/AJAX/UBICACIONES/cargar_articulos_disponibles.php",
       {
         campo_codigo: codigo
@@ -332,11 +350,6 @@ function confirmar_inventario(ubicacion) {
   if (articulos_seleccionados.length == 0) {
     articulos_array = "ninguno";
   } else {
-    // articulos_array = [];
-
-		// articulos_array[1]= [];
-		// articulos_array[1][0] = "BB00";
-		// articulos_array[1][1] = "3";
     articulos_array = [];
     for (var i = 0; i < articulos_seleccionados.length; i++) {
       fila = $(articulos_seleccionados[i]).children();

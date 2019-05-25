@@ -10,26 +10,15 @@
 	include "../../funciones.php";
   	if (isset($_SESSION['email']) and isset($_SESSION['password']) and isset($_SESSION['tipo'])) { // COMPROBAR QUE UN USUARIO HAYA INICIADO SESIÓN
 		$resultado_ubicaciones = ver_ubicaciones($_POST['campo_filtro']);
-	  if ($resultado_ubicaciones === "ERROR EN LA BD") echo "Se ha producido un error al conectarse al servidor. Prueba a conectarte más rápido.";
+	  if ($resultado_ubicaciones === "ERROR EN LA BD") echo "Se ha producido un error al conectarse al servidor. Prueba a conectarte más tarde.";
 		elseif ($resultado_ubicaciones === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos. Prueba a actualizar la página y volver a intentarlo.";
 		elseif ($resultado_ubicaciones === "NO UBICACIONES") echo "No se ha encontrado a ningún usuario que concuerde con el patrón de búsqueda.";
 		elseif ($resultado_ubicaciones === "NO UBICACIONES USUARIO") echo "Actualmente no puedes gestionar ninguna ubicación. Solicítale al administrador permisos sobre las ubicaciones necesarias.";
 		//SI NO SE HA PRODUCIDO NINGÚN ERROR, RECORREMOS EL ARRAY RESULTADO
 		else {
-			$resultado = "
-				<thead class='color_fuerte'>
-					<tr>
-						<th scope='col'>Código</th>
-						<th scope='col'>Descripción</th>
-						<th scope='col'>Observaciones</th>
-						<th scope='col'>Eliminar artículo</th>
-					</tr>
-				</thead>
-				<tbody id='contenido_ubicaciones'>
-			";
+			$resultado = "";
 			foreach ($resultado_ubicaciones as $ubicacion) { // RECORRER EL ARRAY OBTENIDO MOSTRANDO LOS DATOS
-				$resultado .= "
-				<tr>
+				$resultado .= "<tr>
 					<td><input type='text' name='campo_codigo' value='".$ubicacion['codigo']."' readonly></td>
 					<td><input type='text' name='campo_descripcion' value='".$ubicacion['descripcion']."' readonly></td>
 					<td><input type='text' name='campo_observaciones' value='".$ubicacion['observaciones']."' readonly></td>
@@ -41,9 +30,6 @@
 				</tr>
 				";
 			}
-			$resultado .= "
-				</tbody>
-			";
 			echo $resultado;
 		}
 	} else header('Location: /PHP/index.php'); // SI NO ES ADMINISTRADOR LE REDIRIGIMOS A LA PÁGINA PRINCIPAL

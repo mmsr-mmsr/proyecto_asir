@@ -108,7 +108,7 @@
 <?php
 	$resultado_logs = ver_logs(0);
 	if ($resultado_logs === "ERROR EN LA BD") echo "Se ha producido un error al conectarse a la Base de Datos. Prueba a conectarse más tarde.";
-	elseif ($resultado_logs === "NO LOGS") echo "No se ha encontrado ningún artículo en la BD.";
+	elseif ($resultado_logs === "NO LOGS") echo "No se ha encontrado log en la BD.";
 	elseif ($resultado_logs === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos de la BD. Prueba a actualizar la página e intentarlo de nuevo.";
 	else {
 ?>

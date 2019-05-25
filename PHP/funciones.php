@@ -405,9 +405,11 @@
 		// MOSTRAR TODAS LAS FILAS
 		if ($filtro == "ninguno") {
 			$resultado = $conexion->query("SELECT codigo, descripcion, observaciones FROM ubicaciones ORDER BY codigo");
-			if (!is_object($resultado) or $resultado->num_rows <= 0) { // COMPROBAR SI LA CONSULTA HA DEVULETO FILAS
+			if (!is_object($resultado)) { // COMPROBAR SI LA CONSULTA HA DEVULETO FILAS
 				$conexion->close();
 				return "FALLO CONSULTA"; // SI NO DEVUELVE FILAS CONSIDERAMOS ERROR, YA QUE NO PUEDE SER QUE NO EXISTA NI 1 USUARIO ADMINISTRADOR
+			} elseif ($resultado->num_rows <= 0) {
+				return "NO UBICACIONES";
 			} else {
 				while ($fila = $resultado->fetch_assoc()) { // RECORRER EL RESULTADO E IR AÑADIENDO LAS FILAS AL ARRAY $usuarios
 					$ubicaciones[] = $fila;

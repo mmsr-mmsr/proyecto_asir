@@ -17,8 +17,7 @@
 		elseif ($resultado_articulos) {
 			$resultado = "";
 			foreach ($resultado_articulos as $ubicacion) { // RECORRER EL ARRAY OBTENIDO MOSTRANDO LOS DATOS
-				$resultado .= "
-				<tr>
+				$resultado .= "<tr>
 					<td><input type='text' name='campo_codigo' value='".$ubicacion['codigo']."' readonly></td>
 					<td><input type='text' name='campo_descripcion' value='".$ubicacion['descripcion']."' readonly></td>
 					<td><input type='text' name='campo_observaciones' value='".$ubicacion['observaciones']."' readonly></td>

@@ -14,11 +14,11 @@
 		elseif ($resultado_articulos_ubicacion === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos. Prueba a actualizar la página y volver a intentarlo.";
 		elseif ($resultado_articulos_ubicacion === "FALLO UBICACION") echo "La ubicación que ha tratado de listar no está disponible o no existe. Actualiza la página para recargar los datos.";
 		elseif ($resultado_articulos_ubicacion === "NO ARTICULOS") {
-			$resultado = "<option selected>Selecciona una ubicación para añadir</option>";
+			$resultado = "<option selected>Selecciona un artículo para añadir</option>";
 			echo $resultado;
 		}
 		elseif (is_array($resultado_articulos_ubicacion)) {
-			$resultado = "<option selected>Selecciona una ubicación para añadir</option>";
+			$resultado = "<option selected>Selecciona un artículo para añadir</option>";
 			foreach ($resultado_articulos_ubicacion as $articulo) { // RECORRER EL ARRAY OBTENIDO MOSTRANDO LOS DATOS
 				$resultado .= "<option id='".$articulo['codigo']."' value='".$articulo['codigo']."'>".$articulo['descripcion']."</option>";
 			}
