@@ -145,10 +145,16 @@
 					<td><input type='text' name='campo_descripcion' value='".$ubicacion['descripcion']."' readonly></td>
 					<td><input type='text' name='campo_observaciones' value='".$ubicacion['observaciones']."' readonly></td>
 					<td>
-						<button onclick='ver_articulos(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver artículos'><i class='fas fa-search'></i></button>
+						<button onclick='ver_articulos(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver inventario'><i class='fas fa-search'></i></button>
+			";
+			if ($_SESSION === "administrador") {
+				echo "
 						<button onclick='eliminar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar ubicación'><i class='fas fa-trash'></i></button>
 						<button onclick='modificar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar ubicación'><i class='fas fa-pen'></i></button>
 					</td>
+				";
+			}
+			echo "
 				</tr>
 			";
 		}
