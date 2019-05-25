@@ -3,6 +3,14 @@
 	use PHPMailer\PHPMailer\Exception;
 	use Slam\Excel\Helper as ExcelHelper;
 	// FUNCIONES GENÉRICAS DE LA APLICACIÓN //
+	//DOCUMENTAAAAAAAAAAAAAAAAAAR
+	function validar_codigo($codigo) {
+		if (empty($codigo) or !preg_match('/^[[:alpha:]]{2}\d{2}$/', $codigo)) { // COMPROBAR QUE SE HAYA PASADO UN CÓDIGO Y ESTE TENGA UN FORMATO CORRECTO
+			return False;
+		} else {
+			return True;
+		}
+	}
 	/*
 		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA CONECTARSE A LA BASE DE DATOS. ENVÍA UN CORREO EN CASO DE FALLAR LA BD.
 		RESULTADO: DEVUELVE LA CONEXIÓN CREADA CON LA BASE DE DATOS O FALSE SI NO HA SIDO POSIBLE CONECTARSE.
@@ -1004,11 +1012,10 @@
 				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
 				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
 			}
-			//echo $fichero;
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=consulta.csv");
 			// apt-get install php7.0-xml php7.0-mbstring
-			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
@@ -1035,7 +1042,7 @@
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=articulos.csv");
 			// apt-get install php7.0-xml php7.0-mbstring
-			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
@@ -1051,18 +1058,22 @@
 			$conexion->close();
 			return "CONSULTA SIN RESULTADOS";
 		} else {
-			$fichero = "";
+			//$fichero = "";
+			$archivo_final=fopen('ubicaciones.csv', 'w');
 			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
 				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
-					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+					fwrite($archivo_final, $campo.";"); // AÑADIMOS CAMPOS AL FICHERO
 				}
-				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
-				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+				//$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+				fwrite($archivo_final,PHP_EOL); // AÑADIMOS SALTO DE LÍNEA
 			}
+			fclose($archivo_final);
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=ubicaciones.csv");
 			// apt-get install php7.0-xml php7.0-mbstring
-			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			readfile("ubicaciones.csv");
+			//unlink("ubicaciones.csv");
+			//echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
@@ -1089,7 +1100,7 @@
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=usuarios.csv");
 			// apt-get install php7.0-xml php7.0-mbstring
-			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
@@ -1116,7 +1127,7 @@
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=stock.csv");
 			// apt-get install php7.0-xml php7.0-mbstring
-			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
@@ -1143,7 +1154,7 @@
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=gestiona.csv");
 			// apt-get install php7.0-xml php7.0-mbstring
-			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
@@ -1170,7 +1181,7 @@
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=logs.csv");
 			// apt-get install php7.0-xml php7.0-mbstring
-			echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
@@ -1201,7 +1212,7 @@
 				header('Content-Type: text/csv; charset=utf-8');
 				header("Content-Disposition: attachment; filename=".$ubicacion.".csv");
 				// apt-get install php7.0-xml php7.0-mbstring
-				echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+				echo mb_convert_encoding($fichero, 'UTF-8');
 				$conexion->close();
 			}
 		}
@@ -1233,7 +1244,7 @@
 				header('Content-Type: text/csv; charset=utf-8');
 				header("Content-Disposition: attachment; filename=ubicaciones_de_".$articulo.".csv");
 				// apt-get install php7.0-xml php7.0-mbstring
-				echo mb_convert_encoding($fichero, 'UTF-16LE', 'UTF-8');
+				echo mb_convert_encoding($fichero, 'UTF-8');
 				$conexion->close();
 			}
 		}
@@ -1653,43 +1664,85 @@
 	}
 
 	// IMPORTAR DESDE CSV
-	function importar_csv_articulos($fichero) {
+	function importar_csv_tabla_articulos($fichero) {
 		if (@$manejador_fichero=fopen($fichero, 'r')) { // ABRIR EL FICHERO EN MODO LECTURA
-			$conexion = conexion_database();
 			$contador = 1;
+			$errores = array();
+			$inserciones = array();
 			while (($linea = fgetcsv($manejador_fichero, 1000, ";")) !== FALSE) { // RECORRER EL FICHERO DIVIDIENDO LOS CAMPOS POR ";"
-				if (count($linea) != 3) $errores[] = "La línea ".$contador." ".implode(";", $linea)." no tiene un formato correcto"; // COMPROBAR QUE TIENE 3 CAMPOS
-				if (empty($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo código vacío y no se ha podido insertar"; // COMPROBAR QUE EL CÓDIGO NO ESTÁ VACÍO
+				//$linea = array_map("trim", $linea);
+				//$linea = array_map("utf8_encode", $linea); // CONVERTIR LOS CARÁCTERES A UTF-8, SOLUCIONANDO ASÍ LOS PROBLEMAS DE TILDES Y Ñ
+				//print_r($linea);
+				if (count($linea) != 3) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un número de campos incorrecto"; // COMPROBAR QUE TIENE 3 CAMPOS
+				elseif (empty($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo código vacío y no se ha podido insertar"; // COMPROBAR QUE EL CÓDIGO NO ESTÁ VACÍO
 				elseif (empty($linea[1])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo descripción vacío y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
 				else {
-					$contenido[$contador][] = "";
+					$datos_a_insertar[$contador] = $linea; // SI LA VALIDACIÓN ES CORRECTA, METEMOS LA FILA EN UN ARRAY
 				}
 				$contador++;
 			}
-			return $errores;
+			if (!isset($datos_a_insertar)) return "SIN DATOS"; // SI NINGUNA FILA HA PASADO LA VALIDACIÓN TERMINAMOS LA FUNCIÓN
+			$conexion = conexion_database();
+			$sentencia = $conexion->prepare("INSERT INTO articulos VALUES (? , ?, ?)");
+			$sentencia->bind_param("sss", $codigo, $descripcion, $observaciones); // EVITAR SQL INJECTION
+			foreach ($datos_a_insertar as $articulo) { // RECORRER LOS DATOS A INSERTAR
+				// VINCULAR LOS DATOS
+				$codigo = strtoupper($articulo[0]);
+				$descripcion = ucwords(strtolower($articulo[1]));
+				if (empty($articulo[2])) $observaciones = null;
+				else $observaciones = $articulo[2];
+				if (!$sentencia->execute()) { // COMPROBAR SI SE HA INSERTADO CORRECTAMENTE
+					registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO articulos VALUES ('".$codigo."', '".$descripcion."', '".$observaciones."') desde la función importar_csv_tabla_articulos()", "error"); // ANOTAR EVENTO EN LA BD
+					$errores[] = "Ha fallado la inserción de la línea ".implode(";", $articulo);
+				} else {
+					$inserciones[] = "Se ha insertado correctamente la línea ".implode(";", $articulo);
+				}
+			}
+			return array("errores" => $errores, "inserciones" => $inserciones);
 		} else {
-			registrar_evento(time(), $email, "Fallo al abrir el fichero para importar datos desde la función importar_csv_articulos()", "error"); // ANOTAR EVENTO EN LA BD
-			return "APERTURA FALLIDA";
+			registrar_evento(time(), $_SESSION['email'], "Fallo al abrir el fichero para importar datos desde la función importar_csv_tabla_articulos()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO ABRIR";
 		}
 		fclose($manejador_fichero);
-		//readfile($fichero);
 	}
-
-	// $sentencia = $conexion->prepare("INSERT INTO stock VALUES (? , ?, ?)");
-	// $sentencia->bind_param("ssi", $ubicacion, $codigo, $cantidad);
-	// //RECORRER EL ARRAY DE UBICACIONES, SI UNA INSERCIÓN FALLA HACEMOS ROLLBACK Y DEVOLVEMOS FALSE
-	// foreach ($articulos as $articulo) {
-	// 	$codigo = $articulo[0];
-	// 	$cantidad = $articulo[1];
-	// 	if (empty($cantidad) or !preg_match('/^[1-9]*$/', $cantidad)) {
-	// 		$conexion->rollback();
-	// 		$conexion->close();
-	// 		return "FALLO CANTIDAD";
-	// 	}
-	// 	if (!$sentencia->execute()) {
-	// 		registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO stock VALUES ('".$ubicacion."', '".$codigo."', '".$cantidad."') desde la función inventariar_ubicacion()", "error"); // ANOTAR EVENTO EN LA BD
-	// 		$conexion->rollback(); // SI LA CONSULTA FALLA CANCELAMOS LA TRANSACCIÓN
-	// 		return "FALLO CONSULTA";
-	// 	}
-	// }
+	function importar_csv_tabla_ubicaciones($fichero) {
+		if (@$manejador_fichero=fopen($fichero, 'r')) { // ABRIR EL FICHERO EN MODO LECTURA
+			$contador = 1;
+			$errores = array();
+			$inserciones = array();
+			while (($linea = fgetcsv($manejador_fichero, 1000, ";")) !== FALSE) { // RECORRER EL FICHERO DIVIDIENDO LOS CAMPOS POR ";"
+				//$linea = array_map("utf8_encode", $linea);
+				if (count($linea) < 2) $errores[] = "La línea ".$contador." ".implode(";", $linea)." debe tener como mínimo 2 campos"; // COMPROBAR QUE TIENE 3 CAMPOS
+				elseif (empty($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo código vacío y no se ha podido insertar"; // COMPROBAR QUE EL CÓDIGO NO ESTÁ VACÍO
+				elseif (empty($linea[1])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo descripción vacío y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
+				elseif (!validar_codigo($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un código erróneo y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
+				else {
+					$datos_a_insertar[$contador] = $linea; // SI LA VALIDACIÓN ES CORRECTA, METEMOS LA FILA EN UN ARRAY
+				}
+				$contador++;
+			}
+			if (!isset($datos_a_insertar)) return $errores; // SI NINGUNA FILA HA PASADO LA VALIDACIÓN TERMINAMOS LA FUNCIÓN
+			$conexion = conexion_database();
+			$sentencia = $conexion->prepare("INSERT INTO ubicaciones VALUES (? , ?, ?)");
+			$sentencia->bind_param("sss", $codigo, $descripcion, $observaciones); // EVITAR SQL INJECTION
+			foreach ($datos_a_insertar as $ubicacion) { // RECORRER LOS DATOS A INSERTAR
+				// VINCULAR LOS DATOS
+				$codigo = strtoupper($ubicacion[0]);
+				$descripcion = ucwords(strtolower($ubicacion[1]));
+				if (empty($ubicacion[2])) $observaciones = null;
+				else $observaciones = $ubicacion[2];
+				if (!$sentencia->execute()) { // COMPROBAR SI SE HA INSERTADO CORRECTAMENTE
+					registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO ubicaciones VALUES ('".$codigo."', '".$descripcion."', '".$observaciones."') desde la función importar_csv_tabla_ubicaciones()", "error"); // ANOTAR EVENTO EN LA BD
+					$errores[] = "Ha fallado la inserción de la línea ".implode(";", $ubicacion);
+				} else {
+					$inserciones[] = "Se ha insertado correctamente la línea ".implode(";", $ubicacion);
+				}
+			}
+			return array("errores" => $errores, "inserciones" => $inserciones);
+		} else {
+			registrar_evento(time(), $_SESSION['email'], "Fallo al abrir el fichero para importar datos desde la función importar_csv_tabla_ubicaciones()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO ABRIR";
+		}
+		fclose($manejador_fichero);
+	}
 ?>
