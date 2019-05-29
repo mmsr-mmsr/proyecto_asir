@@ -21,7 +21,7 @@
 				if ($resultado_inventariado === "ERROR EN LA BD") echo "Se ha producido un error al conectarse al servidor. Prueba a conectarte más tarde.";
 				elseif ($resultado_inventariado === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos. Prueba a actualizar la página y volver a intentarlo.";
 				elseif ($resultado_inventariado === "FALLO CODIGO" or $resultado_inventariado === "FALLO UBICACION") echo "La ubicación que has tratado de modificar no está disponible o no existe. Actualiza la página para recargar los datos.";
-				elseif ($resultado_inventariado === "FALLO CANTIDAD") echo "El campo cantidad debe estar relleno y tener un valor superior a 0.";
+				elseif ($resultado_inventariado === "FALLO CANTIDAD") echo "El campo cantidad no se puede dejar vacío, con un valor igual a 0 ni contener 0 a la izquiera. Si el artículo no está en la ubicacion elimínalo haciendo click en la papelera.";
 				elseif ($resultado_inventariado === True) echo "CORRECTO";
 			}
 		}

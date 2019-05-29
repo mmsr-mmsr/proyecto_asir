@@ -745,7 +745,7 @@
 			foreach ($articulos as $articulo) {
 				$codigo = $articulo[0];
 				$cantidad = $articulo[1];
-				if (empty($cantidad) or !preg_match('/^[1-9]*$/', $cantidad)) {
+				if (empty($cantidad) or !preg_match('/^[1-9]+[0-9]*$/', $cantidad)) {
 					$conexion->rollback();
 					$conexion->close();
 					return "FALLO CANTIDAD";
