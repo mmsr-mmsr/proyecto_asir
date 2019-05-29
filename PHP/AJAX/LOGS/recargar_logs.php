@@ -14,7 +14,7 @@
 			elseif ($resultado_logs === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos. Prueba a actualizar la página y volver a intentarlo.";
 			elseif ($resultado_logs === "NO UBICACIONES") echo "No se ha encontrado a ningún artículo que concuerde con el patrón de búsqueda.";
 			//SI NO SE HA PRODUCIDO NINGÚN ERROR, RECORREMOS EL ARRAY RESULTADO
-			elseif ($resultado_logs) {
+			elseif (is_array($resultado_logs)) {
 				$resultado = "";
 				foreach ($resultado_logs as $log) { // RECORRER EL ARRAY OBTENIDO MOSTRANDO LOS DATOS
 					$resultado .= "

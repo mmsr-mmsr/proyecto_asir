@@ -11,11 +11,11 @@ function borrar_filtros() {
   usuario = "";
   descripcion = "";
   tipo = "";
-  inicio = $("#campo_inicio").val("");
-  fin = $("#campo_fin").val("");
-  usuario = $("#campo_usuario").val("");
-  descripcion = $("#campo_descripcion").val("");
-  tipo = $("#campo_tipo").val("");
+  // inicio = $("#campo_inicio").val("");
+  // fin = $("#campo_fin").val("");
+  // usuario = $("#campo_usuario").val("");
+  // descripcion = $("#campo_descripcion").val("");
+  // tipo = $("#campo_tipo").val("");
   recargar_logs(); // LLAMAR A LA FUNCIÓN QUE RECARGA LOS DATOS DE LA TABLA Y REHACE EL MENÚ DE PAGINACIÓN
 }
 /**
@@ -23,6 +23,8 @@ function borrar_filtros() {
   LLAMADA: ES LLAMADA CUANDO SE HACE CLICK EN EL BOTÓN <button onclick='borrar_filtros()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todos los logs</button>
 */
 function recargar_logs(indice = 0, inicio = "", fin = "", usuario = "", descripcion = "", tipo = "") {
+  alert("Inicio: " + inicio + " Fin: " + fin);
+  //alert("Indice: " + indice + " Inicio: " + inicio + " Fin: " + fin + " Usuario: " + usuario + " Descripción: " + descripcion + " Tipo: " + tipo);
   $.post("../PHP/AJAX/LOGS/recargar_logs.php",
   {
     campo_indice: indice,
@@ -35,7 +37,6 @@ function recargar_logs(indice = 0, inicio = "", fin = "", usuario = "", descripc
   function(resultado) {
     $("#contenido_logs").html(resultado); //EL RESULTADO DEL SCRIPT PHP SUSTITUYE EL CONTENIDO DE LA TABLA LOGS
   });
-
   $.post("../PHP/AJAX/LOGS/paginar_logs.php",
   {
     campo_indice: indice,
@@ -56,15 +57,17 @@ function recargar_logs(indice = 0, inicio = "", fin = "", usuario = "", descripc
 */
 function buscar_logs() {
   inicio = $("#campo_inicio").val();
-  inicio = new Date(inicio);
-  inicio = inicio.getTime() / 1000;
+  if (inicio.length > 0) {
+    inicio = new Date(inicio);
+    inicio = inicio.getTime() / 1000;
+  }
   fin = $("#campo_fin").val();
-  fin = new Date(fin);
-  fin = fin.getTime() / 1000;
+  if (fin.length > 0) {
+    fin = new Date(fin);
+    fin = fin.getTime() / 1000;
+  }
   usuario = $("#campo_usuario").val();
   descripcion = $("#campo_descripcion").val();
   tipo = $("#campo_tipo").val();
-  alert(inicio);
-  alert(fin);
   recargar_logs(0, inicio, fin, usuario, descripcion, tipo);
 }

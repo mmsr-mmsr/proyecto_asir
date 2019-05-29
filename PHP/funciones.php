@@ -925,6 +925,7 @@
 	function ver_logs($indice = 0, $inicio = "", $fin = "", $usuario = "", $descripcion = "", $tipo = "") {
 		$conexion = conexion_database();
 		$indice = $indice * 10;
+		if (!empty($descripcion)) $descripcion = "%".$descripcion."%";
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		//CONSULTA PARA MOSTRAR LOS LOGS DE 10 EN 10 EN FUNCIÓN DE LOS FILTROS QUE HAYA INTRODUCIDO EL USUARIO
 		$sentencia = $conexion->prepare("	SELECT fecha, usuario, descripcion, tipo
@@ -958,16 +959,17 @@
 	// DOCUMENTAR
 	function contar_logs($inicio = "", $fin = "", $usuario = "", $descripcion = "", $tipo = "") {
 		$conexion = conexion_database();
+		if (!empty($descripcion)) $descripcion = "%".$descripcion."%";
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		$sentencia = $conexion->prepare("	SELECT COUNT(*) TOTAL
 																			FROM logs
-																			WHERE (fecha >= ? OR ? = '') 					AND
-																						(fecha <= ? OR ? = '') 					AND
-																						(usuario = ? OR ? = '') 				AND
-																						(descripcion LIKE ? OR ? = '') 	AND
-																						(tipo = ? OR ? = '')
+																			WHERE (? = '' OR fecha >= ?) 					AND
+																						(? = '' OR fecha <= ?) 					AND
+																						(? = '' OR usuario = ?) 				AND
+																						(? = '' OR descripcion LIKE ?) 	AND
+																						(? = '' OR tipo = ?)
 																			");
-		$sentencia->bind_param("ssssssssss", $inicio, $inicio, $fin, $fin, $usuario, $usuario, $descripcion, $descripcion, $tipo, $tipo);
+		$sentencia->bind_param("isssssssss", $inicio, $inicio, $fin, $fin, $usuario, $usuario, $descripcion, $descripcion, $tipo, $tipo);
 		if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
 			$conexion->close();
 			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT codigo, descripcion, observaciones FROM ubicaciones WHERE codigo LIKE '".$filtro."' OR descripcion LIKE '".$filtro."' ORDER BY codigo  desde la función ver_ubicaciones()", "error"); // ANOTAR EVENTO EN LA BD
@@ -975,8 +977,8 @@
 		} else {
 			$resultado = $sentencia->get_result();
 			$resultado = $resultado->fetch_assoc();
-			$resultado['TOTAL'] = ceil($resultado['TOTAL'] / 10);
-			return $resultado['TOTAL'];
+			$resultado = ceil($resultado['TOTAL'] / 10);
+			return $resultado;
 			$conexion->close();
 		}
 	}

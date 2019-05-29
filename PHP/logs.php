@@ -33,8 +33,6 @@
 	<link rel="stylesheet" href="../CSS/estilos.css">
 	<link rel="stylesheet" href="../CSS/iconos.css">
 	<link rel="stylesheet" href="../CSS/jquery-confirm.min.css">
-
-	<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.css" rel="stylesheet"/>
 </head>
 <body>
 	<div>
@@ -139,20 +137,21 @@
 				<nav aria-label="...">
 					<ul class="pagination" id="paginar_logs">
 <?php
-	$resultado_paginacion = contar_logs();
-	echo "
-		<li class='page-item active'>
-			<button onclick='recargar_logs(0, inicio, fin, usuario, descripcion, tipo)'>1</button>
-		</li>
-	";
-	for ($i=1; $i < $resultado_paginacion; $i++) {
-		echo "
-			<li class='page-item'>
-	      <button onclick='recargar_logs(".$i.", inicio, fin, usuario, descripcion, tipo)'>".($i + 1)."</button>
-	    </li>
-		";
-	}
+	// $resultado_paginacion = contar_logs();
+	// echo "
+	// 	<li class='page-item active'>
+	// 		<button onclick='recargar_logs(0, inicio, fin, usuario, descripcion, tipo)'>1</button>
+	// 	</li>
+	// ";
+	// for ($i=1; $i < $resultado_paginacion; $i++) {
+	// 	echo "
+	// 		<li class='page-item'>
+	//       <button onclick='recargar_logs(".$i.", inicio, fin, usuario, descripcion, tipo)'>".($i + 1)."</button>
+	//     </li>
+	// 	";
+	// }
 ?>
+
 					</ul>
 			</nav>
 <?php
@@ -166,8 +165,11 @@
 <script src="../JS/bootstrap.min.js"></script>
 <script src="../JS/tooltip.js"></script>
 <script src="../JS/logs.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script> -->
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script> -->
+<script>
+	recargar_logs(indice = 0, inicio = "", fin = "", usuario = "", descripcion = "", tipo = "");
+</script>
 
 </body>
 </html>

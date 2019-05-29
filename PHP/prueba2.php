@@ -8,15 +8,16 @@
 	// 	}
 	// }
   include "funciones.php";
-  exportar_csv_tabla_ubicaciones();
+  // exportar_csv_tabla_ubicaciones();
 
-  $conexion = conexion_database();
-  for ($i=1000; $i < 2000; $i++) {
-    $conexion->query("INSERT INTO logs VALUES('".$i."', 'admin', '".$i."', 'login')");
+  // $conexion = conexion_database();
+  // for ($i=1000; $i < 2000; $i++) {
+  //   $conexion->query("INSERT INTO logs VALUES('".$i."', 'admin', '".$i."', 'login')");
     //$conexion->query("INSERT INTO ubicaciones VALUES(1, 1, 1)");
 
 		//$conexion->execute();
   }
+
   // $manejador_fichero=fopen("ubicaciones(2).csv", 'r');
 
   // while (!feof($manejador_fichero)) {
@@ -42,3 +43,11 @@
     // $sentencia->execute();
    // echo exportar_csv_tabla_logs();
 ?>
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+  
+</body>
+</html>
