@@ -22,10 +22,16 @@
 					<td><input type='text' name='campo_descripcion' value='".$ubicacion['descripcion']."' readonly></td>
 					<td><input type='text' name='campo_observaciones' value='".$ubicacion['observaciones']."' readonly></td>
 					<td>
+				";
+				if ($_SESSION['tipo'] === "administrador") {
+					$resultado .= "
 						<button onclick='eliminar_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar artículo'><i class='fas fa-trash'></i></button>
 						<button onclick='modificar_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar artículo'><i class='fas fa-pen'></i></button>
-					</td>
-				</tr>
+					";
+				}
+				$resultado .= "
+						</td>
+					</tr>
 				";
 			}
 			echo $resultado;
