@@ -1,10 +1,10 @@
-@media only screen and (max-width: 576px) {
+@media only screen and (max-width: 768px) {
 	#logo2 {
 		visibility: hidden !important;
 		display: none !important;
 	}
 	#logo1 {
-		width: 40%;
+		width: 35%;
 		/* display: none !important; */
 		/* margin-top: 10px !important;
 		margin-bottom: 10px !important; */
@@ -14,9 +14,6 @@
 	}
 	#crear_ubicacion {
 		background-color: white;
-	}
-	.fa-plus-circle {
-		color: #1bbc9b;
 	}
 	/* #menu_acciones {
 		display: block !important;
@@ -111,7 +108,9 @@ table, tr, td, th {
 .dropdown-item:hover{
 	color: #00886d;
 }
-
+.fa-plus-circle {
+	color: #1bbc9b;
+}
 .navbar-toggler-icon {
 	background-image: url("/IMG/menu.png");
 }
@@ -128,10 +127,11 @@ table input {
 	width: 100%;
 	border: 0px;
 	border-radius: 0.25rem;
+	background: transparent;
+	
 }
 
-table input[readonly] {
-	background: transparent;
+table input {
 }
 #lista_ubicaciones_seleccionadas .list-group-item:hover {
 	background-color: #cf3919;

@@ -1,3 +1,54 @@
+if($(window).width() < 768) {
+   // $("#myDiv").addClass("myClass");
+  $("#tabla_ubicaciones").removeClass("table-striped");
+  $("#tabla_ubicaciones").removeClass("table-hover");
+  //$("#crear_ubicacion").html("<i class='fas fa-plus-circle fa-lg'></i>");
+  crear_ubicacion = $("#crear_ubicacion_li").html();
+  $("#crear_ubicacion_li").empty();
+  $("#pagina").append(crear_ubicacion);
+}
+$(window).resize(function() {
+  if($(window).width() < 768) {
+    $("#tabla_ubicaciones").removeClass("table-striped");
+    $("#tabla_ubicaciones").removeClass("table-hover");
+    crear_ubicacion = $("#crear_ubicacion_li").html();
+    $("#crear_ubicacion_li").empty();
+    $("#pagina").append(crear_ubicacion);
+    $("#crear_ubicacion").click(function(){
+      $("#contenido_ubicaciones").append(
+        "<tr>" +
+          "<td><input type='text' name='campo_codigo' class=''></td>" +
+          "<td><input type='text' name='campo_descripcion'></td>" +
+          "<td><input type='text' name='campo_observaciones'></td>" +
+          "<td>" +
+            "<button onclick='confirmar_crear_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Confirmar'><i class='fas fa-check'></i></button>" +
+            "<button onclick='cancelar_nueva_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Cancelar'><i class='fas fa-times'></i></button>" +
+          "</td>" +
+        "</tr>"
+      );
+    });
+  } else {
+    crear_ubicacion = $("#crear_ubicacion");
+    $("#crear_ubicacion").remove();
+    $("#crear_ubicacion_li").append(crear_ubicacion);
+
+    $("#crear_ubicacion").click(function(){
+      $("#contenido_ubicaciones").append(
+        "<tr>" +
+          "<td><input type='text' name='campo_codigo' class=''></td>" +
+          "<td><input type='text' name='campo_descripcion'></td>" +
+          "<td><input type='text' name='campo_observaciones'></td>" +
+          "<td>" +
+            "<button onclick='confirmar_crear_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Confirmar'><i class='fas fa-check'></i></button>" +
+            "<button onclick='cancelar_nueva_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Cancelar'><i class='fas fa-times'></i></button>" +
+          "</td>" +
+        "</tr>"
+      );
+    });
+    $("#tabla_ubicaciones").addClass("table-striped");
+    $("#tabla_ubicaciones").addClass("table-hover");
+  }
+});
 /**
   DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA COMPROBAR SI UN CÓDIGO TIENE EL FORMATO CORRECTO MEDIANTE UNA EXPRESIÓN REGULAR
   RESULTADO: DEVUELVE FALSE SI NO TIENE UN FORMATO CORRECTO O TRUE SI SÍ QUE LO TIENE
@@ -5,12 +56,6 @@
   PARÁMETROS:
     - CÓDIGO: CADENA QUE VALIDAR
 */
-if($(window).width() < 768) {
-   // $("#myDiv").addClass("myClass");
-   $("#tabla_ubicaciones").removeClass("table-striped");
-   $("#tabla_ubicaciones").removeClass("table-hover");
-   $("#crear_ubicacion").html("<i class='fas fa-plus-circle fa-lg'></i>");
-}
 function validor_codigo(codigo) {
   var re = /^[A-Z]{2}\d{2}$/;
   return re.test(String(codigo));

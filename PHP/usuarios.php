@@ -82,7 +82,7 @@
 	elseif ($resultado_usuarios === "FALLO CONSULTA") echo "Se ha producido un error al conectarse a la BD. Pruebe a actualizar la página.";
 	else {
 ?>
-<div class="col-xl-10 col-lg-12 offset-xl-1">
+<div id="pagina" class="col-xl-10 col-lg-12 offset-xl-1">
 	<ul class="nav nav-tabs" id="myTab" role="tablist">
 		<li class="nav-item">
 			<button onclick='recargar_usuarios()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todos los usuarios</button>
@@ -93,11 +93,11 @@
 		<li class="nav-item">
 			<input id="campo_buscar" class='nav-link form-control' type='text' placeholder='Buscar...'>
 		</li>
-		<li class='nav-item'>
-			<button id="crear_usuario" type="button" class="btn color_intermedio">Crear Usuario</button>
+		<li class='nav-item' id='crear_usuario_li'>
+			<button id="crear_usuario" type="button" class="btn"><i class="fas fa-plus-circle fa-lg"></i></button>
 		</li>
 	</ul>
-	<table id='tabla_usuarios' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
+	<table id='tabla_usuarios' class='table table-striped table-hover table-bordered table-dark'>
 		<thead class='color_fuerte'>
 			<tr>
 				<th scope='col'>Email</th>

@@ -1,6 +1,20 @@
 // VARIABLES UTILIZADAS PARA LA PAGINACIÓN Y FILTRADO DE LOGS. ÁMBITO GLOBAL
 var indice, inicio, fin, usuario, descripcion, tipo;
-
+if($(window).width() < 768) {
+   // $("#myDiv").addClass("myClass");
+  $("#tabla_logs").removeClass("table-striped");
+  $("#tabla_logs").removeClass("table-hover");
+  //$("#crear_ubicacion").html("<i class='fas fa-plus-circle fa-lg'></i>");
+}
+$(window).resize(function() {
+  if($(window).width() < 768) {
+    $("#tabla_logs").removeClass("table-striped");
+    $("#tabla_logs").removeClass("table-hover");
+  } else {
+    $("#tabla_logs").addClass("table-striped");
+    $("#tabla_logs").addClass("table-hover");
+  }
+});
 /**
   DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA ELIMINAR TODOS LOS FILTROS QUE SE HAYAN APLICADO (VACÍA TANTO LAS VARIABLES COMO LOS CAMPOS DEL FORM). DESPUÉS VUELVE A CARGAR LOS DATOS EN LA TABLA Y REHACE EL MENÚ DE PAGINACIÓN
   LLAMADA: ES LLAMADA CUANDO SE HACE CLICK EN EL BOTÓN <button onclick='borrar_filtros()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todos los logs</button>

@@ -1,3 +1,56 @@
+// CUANDO EL DISPOSITIVO SEA PEQUEÑO
+if($(window).width() < 768) {
+  $("#tabla_articulos").removeClass("table-striped");
+  $("#tabla_articulos").removeClass("table-hover");
+
+  // MOVER EL BOTÓN DE CREAR ARTÍCULO A DEBAJO DE LA TABLA
+  crear_articulo = $("#crear_articulo_li").html();
+  $("#crear_articulo_li").empty();
+  $("#pagina").append(crear_articulo);
+}
+
+$(window).resize(function() {
+  if($(window).width() < 768) {
+    $("#tabla_articulos").removeClass("table-striped");
+    $("#tabla_articulos").removeClass("table-hover");
+    crear_articulo = $("#crear_articulo_li").html();
+    $("#crear_articulo_li").empty();
+    $("#pagina").append(crear_articulo);
+    $("#crear_articulo").click(function(){
+      $("#contenido_articulos").append(
+        "<tr>" +
+          "<td><input type='text' name='campo_codigo' class=''></td>" +
+          "<td><input type='text' name='campo_descripcion'></td>" +
+          "<td><input type='text' name='campo_observaciones'></td>" +
+          "<td>" +
+            "<button onclick='confirmar_crear_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Confirmar'><i class='fas fa-check'></i></button>" +
+            "<button onclick='cancelar_nuevo_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Cancelar'><i class='fas fa-times'></i></button>" +
+          "</td>" +
+        "</tr>"
+      );
+    });
+  } else {
+    crear_articulo = $("#crear_articulo");
+    $("#crear_articulo").remove();
+    $("#crear_articulo_li").append(crear_articulo);
+
+    $("#crear_articulo").click(function(){
+      $("#contenido_articulos").append(
+        "<tr>" +
+          "<td><input type='text' name='campo_codigo' class=''></td>" +
+          "<td><input type='text' name='campo_descripcion'></td>" +
+          "<td><input type='text' name='campo_observaciones'></td>" +
+          "<td>" +
+            "<button onclick='confirmar_crear_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Confirmar'><i class='fas fa-check'></i></button>" +
+            "<button onclick='cancelar_nuevo_articulo(this)' type='button' data-toggle='tooltip' data-placement='top' title='Cancelar'><i class='fas fa-times'></i></button>" +
+          "</td>" +
+        "</tr>"
+      );
+    });
+    $("#tabla_articulos").addClass("table-striped");
+    $("#tabla_articulos").addClass("table-hover");
+  }
+});
 /**
   DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA COMPROBAR SI UN CÓDIGO TIENE EL FORMATO CORRECTO MEDIANTE UNA EXPRESIÓN REGULAR
   RESULTADO: DEVUELVE FALSE SI NO TIENE UN FORMATO CORRECTO O TRUE SI SÍ QUE LO TIENE

@@ -110,7 +110,7 @@
 	elseif ($resultado_logs === "FALLO CONSULTA") echo "Se ha producido un error al consultar los datos de la BD. Prueba a actualizar la página e intentarlo de nuevo.";
 	else {
 ?>
-	<table id='tabla_logs' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
+	<table id='tabla_logs' class='table table-striped table-hover table-bordered table-dark'>
 		<thead class='color_fuerte'>
 			<tr>
 				<th scope='col'>Fecha</th>

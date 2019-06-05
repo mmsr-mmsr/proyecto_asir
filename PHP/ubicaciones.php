@@ -82,7 +82,7 @@
 <div class="container">
 	<a href="../PHP/index.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
 </div>
-<div class="col-xl-10 col-lg-12 offset-xl-1">
+<div id="pagina" class="col-xl-10 col-lg-12 offset-xl-1">
 		<ul class="nav nav-tabs" id="menu_acciones" role="tablist">
 			<li class="nav-item">
 				<button onclick='recargar_ubicaciones()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todas las ubicaciones</button>
@@ -104,8 +104,8 @@
 <?php
 			if ($_SESSION['tipo'] === "administrador") {
 				echo "
-				<li class='nav-item'>
-					<button id='crear_ubicacion' type='button' class='btn'><i class='fas fa-plus-circle'></i></button>
+				<li id='crear_ubicacion_li' class='nav-item'>
+					<button id='crear_ubicacion' type='button' class='btn'><i class='fas fa-plus-circle fa-lg'></i></button>
 				</li>";
 			}
 ?>

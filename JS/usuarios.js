@@ -1,3 +1,66 @@
+if($(window).width() < 768) {
+   // $("#myDiv").addClass("myClass");
+  $("#tabla_usuarios").removeClass("table-striped");
+  $("#tabla_usuarios").removeClass("table-hover");
+  //$("#crear_ubicacion").html("<i class='fas fa-plus-circle fa-lg'></i>");
+  crear_usuario = $("#crear_usuario_li").html();
+  $("#crear_usuario_li").empty();
+  $("#pagina").append(crear_usuario);
+}
+$(window).resize(function() {
+  if($(window).width() < 768) {
+    $("#tabla_ubicaciones").removeClass("table-striped");
+    $("#tabla_ubicaciones").removeClass("table-hover");
+    crear_usuario = $("#crear_usuario_li").html();
+    $("#crear_usuario_li").empty();
+    $("#pagina").append(crear_usuario);
+    $("#crear_usuario").click(function(){
+      $("#contenido_usuarios").append(
+        "<tr>" +
+          "<td><input type='text' name='campo_email' class=''></td>" +
+          "<td><input type='text' name='campo_nombre'></td>" +
+          "<td>" +
+            "<select class='custom-select'>" +
+              "<option value='estandar'>Estándar</option> " +
+              "<option value='editor'>Editor</option> " +
+              "<option value='administrador'>Administrador</option>" +
+            "</select>" +
+          "</td>" +
+          "<td>" +
+            "<button onclick='confirmar_crear_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Confirmar'><i class='fas fa-check'></i></button>" +
+            "<button onclick='cancelar_nuevo_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Cancelar'><i class='fas fa-times'></i></button>" +
+          "</td>" +
+        "</tr>"
+      )
+    });
+  } else {
+    crear_usuario = $("#crear_usuario");
+    $("#crear_usuario").remove();
+    $("#crear_usuario_li").append(crear_usuario);
+
+    $("#crear_usuario").click(function(){
+      $("#contenido_usuarios").append(
+        "<tr>" +
+          "<td><input type='text' name='campo_email' class=''></td>" +
+          "<td><input type='text' name='campo_nombre'></td>" +
+          "<td>" +
+            "<select class='custom-select'>" +
+              "<option value='estandar'>Estándar</option> " +
+              "<option value='editor'>Editor</option> " +
+              "<option value='administrador'>Administrador</option>" +
+            "</select>" +
+          "</td>" +
+          "<td>" +
+            "<button onclick='confirmar_crear_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Confirmar'><i class='fas fa-check'></i></button>" +
+            "<button onclick='cancelar_nuevo_usuario(this)' type='button' data-toggle='tooltip' data-placement='top' title='Cancelar'><i class='fas fa-times'></i></button>" +
+          "</td>" +
+        "</tr>"
+      )
+    });
+    $("#tabla_usuarios").addClass("table-striped");
+    $("#tabla_usuarios").addClass("table-hover");
+  }
+});
 /**
   DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA COMPROBAR SI UN EMAIL TIENE EL FORMATO CORRECTO MEDIANTE UNA EXPRESIÓN REGULAR
   RESULTADO: DEVUELVE FALSE SI NO TIENE UN FORMATO CORRECTO O TRUE SI SÍ QUE LO TIENE

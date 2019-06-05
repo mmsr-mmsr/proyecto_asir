@@ -82,7 +82,7 @@
 <div class="container">
 	<a href="../PHP/articulos.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
 </div>
-<div class="col-xl-10 col-lg-12 offset-xl-1">
+<div id="pagina" class="col-xl-10 col-lg-12 offset-xl-1">
 	<ul class="nav nav-tabs" id="myTab" role="tablist">
 		<li class="nav-item">
 			<button onclick='recargar_articulos()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todos los artículos</button>
@@ -96,13 +96,13 @@
 		<?php
 				if ($_SESSION['tipo'] === "administrador") {
 					echo "
-					<li class='nav-item'>
-						<button id='crear_articulo' type='button' class='btn color_intermedio'>Crear artículo</button>
+					<li id='crear_articulo_li' class='nav-item'>
+						<button id='crear_articulo' type='button' class='btn'><i class='fas fa-plus-circle fa-lg'></i></button>
 					</li>";
 				}
 		?>
 	</ul>
-	<table id='tabla_articulos' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
+	<table id='tabla_articulos' class='table table-striped table-hover table-bordered table-dark'>
 		<thead class='color_fuerte'>
 			<tr>
 				<th scope='col'>Código</th>
@@ -140,7 +140,6 @@
 			</tbody>
 		</table>
 </div>
-<p id="id_resultado"></p>
 <script src="../JS/jquery-3.3.1.min.js"></script>
 <script src="../JS/jquery-confirm.min.js"></script>
 <script src="../JS/popper.min.js"></script>
