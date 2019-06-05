@@ -5,6 +5,12 @@
   PARÁMETROS:
     - CÓDIGO: CADENA QUE VALIDAR
 */
+if($(window).width() < 768) {
+   // $("#myDiv").addClass("myClass");
+   $("#tabla_ubicaciones").removeClass("table-striped");
+   $("#tabla_ubicaciones").removeClass("table-hover");
+   $("#crear_ubicacion").html("<i class='fas fa-plus-circle fa-lg'></i>");
+}
 function validor_codigo(codigo) {
   var re = /^[A-Z]{2}\d{2}$/;
   return re.test(String(codigo));

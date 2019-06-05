@@ -95,17 +95,17 @@
 				</li>";
 			}
 ?>
-			<li class='nav-item'>
-				<button onclick='buscar_ubicaciones()' type='button' class='nav-link' id='search-tab' data-toggle='tab' role='tab' aria-controls='search' aria-selected='false'><i class='fas fa-search'></i></button>
-			</li>
 			<li class="nav-item">
 				<input id="campo_buscar" class='nav-link form-control' type='text' placeholder='Buscar...'>
+			</li>
+			<li class='nav-item'>
+				<button onclick='buscar_ubicaciones()' type='button' class='nav-link' id='search-tab' data-toggle='tab' role='tab' aria-controls='search' aria-selected='false'><i class='fas fa-search'></i></button>
 			</li>
 <?php
 			if ($_SESSION['tipo'] === "administrador") {
 				echo "
 				<li class='nav-item'>
-					<button id='crear_ubicacion' type='button' class='btn color_intermedio'>Crear ubicación</button>
+					<button id='crear_ubicacion' type='button' class='btn'><i class='fas fa-plus-circle'></i></button>
 				</li>";
 			}
 ?>
@@ -123,7 +123,7 @@
 				</select>
 			</li>
 		</ul>
-	<table id='tabla_ubicaciones' class='table table-responsive-sm table-striped table-hover table-bordered table-dark'>
+	<table id='tabla_ubicaciones' class='table table-striped table-hover table-bordered table-dark'>
 		<thead id="cabecera_ubicaciones" class='color_fuerte'>
 			<tr>
 				<th scope='col'>Código</th>

@@ -4,11 +4,46 @@
 		display: none !important;
 	}
 	#logo1 {
-		margin-top: 10px !important;
-		margin-bottom: 10px !important;
+		width: 40%;
+		/* display: none !important; */
+		/* margin-top: 10px !important;
+		margin-bottom: 10px !important; */
 	}
 	#login {
 		padding: 20px 20px 20px 20px !important;
+	}
+	#crear_ubicacion {
+		background-color: white;
+	}
+	.fa-plus-circle {
+		color: #1bbc9b;
+	}
+	/* #menu_acciones {
+		display: block !important;
+	} */
+	table, tbody {
+		width:100% !important;
+		background-color: white;
+	}
+	thead {
+		display: none;
+	}
+	tr:nth-of-type(2n) {
+		/* background-color: inherit; */
+	}
+	tr td:first-child {
+		background-color: #1bbc9b;
+	}
+	tr td:first-child input {
+		text-align: center;
+		font-weight:bold;
+		font-size:1.3em;
+	}
+	tbody td {
+		display: block;
+	}
+	tbody td:before {
+		display: block;
 	}
 }
 	/*#login .container #login-row #login-column #login-box {
