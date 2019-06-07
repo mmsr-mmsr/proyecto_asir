@@ -37,7 +37,7 @@ function borrar_filtros() {
   LLAMADA: ES LLAMADA CUANDO SE HACE CLICK EN EL BOTÓN <button onclick='borrar_filtros()' type='button' class='nav-link active' id='home-tab' data-toggle='tab' role='tab' aria-controls='home' aria-selected='true'>Todos los logs</button>
 */
 function recargar_logs(indice = 0, inicio = "", fin = "", usuario = "", descripcion = "", tipo = "") {
-  alert("Inicio: " + inicio + " Fin: " + fin);
+  //alert("Inicio: " + inicio + " Fin: " + fin);
   //alert("Indice: " + indice + " Inicio: " + inicio + " Fin: " + fin + " Usuario: " + usuario + " Descripción: " + descripcion + " Tipo: " + tipo);
   $.post("../PHP/AJAX/LOGS/recargar_logs.php",
   {

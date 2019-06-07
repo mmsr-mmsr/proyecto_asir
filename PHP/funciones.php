@@ -16,8 +16,8 @@
 		RESULTADO: DEVUELVE LA CONEXIÓN CREADA CON LA BASE DE DATOS O FALSE SI NO HA SIDO POSIBLE CONECTARSE.
 		LLAMADA: ES LLAMADA CADA VEZ QUE SE QUIERE INTERACTUAR CON LA BASE DE DATOS.
 	*/
-	function conexion_database() {
-		$conexion = @new mysqli("localhost", "inventario", "inventario", "inventario");
+	function conexion_database($usuario = "inventario") {
+		$conexion = @new mysqli("localhost", $usuario, "inventario", "inventario");
 		if ($conexion->connect_errno) {
     	enviar_email("inventario@iesserraperenxisa.com", "Fallo en la BD", "Se ha producido un error al conectar a la Base de Datos a las ".date(DATE_RFC2822));
 			return False;
@@ -984,45 +984,113 @@
 	}
 
 	// FUNCIONES  PARA LA GESTIÓN DE DATOS (EXPORTAR/IMPORTAR) //
-	// EXPORTAR CSV
-	function exportar_csv_consulta($consulta) {
-		if (empty($consulta)) return "CONSULTA VACIA";
-		$consulta = strtolower($consulta); // PASAR A MINÚSCULAS LA CADENA PARA EVITAR ERRORES
-		$sqli = array("delete", "drop", "truncate", "update", "insert", "create", "commit", "rollback", "--", "#", "/*");
-		// COMPROBAR QUE LA CONSULTA NO CONTIENE DML, DCL ni DDL PARA EVITAR SQL INJECTION
-		foreach ($sqli as $instruccion) {
-			if (stripos($consulta, $instruccion) !== False) {
-				registrar_evento(time(), $_SESSION['email'], "Se ha intentado realizar SQL INJECTION desde la función exportar_csv_consulta con la sentencia ".$consulta, "error");
-				return "SQL INJECTION";
+	function ver_consultas($usuario) {
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+			$usuario = strtolower($usuario);
+			$sentencia = $conexion->prepare("SELECT consulta FROM consultas WHERE usuario = ?");
+			$sentencia->bind_param("s", $usuario);
+			if (!$sentencia->execute()) { // COMPROBAR SI HA FALLADO LA CONSULTA
+				$conexion->close();
+				registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT consulta FROM consultas WHERE usuario = '".$usuario."' desde la función ver_consultas()", "error"); // ANOTAR EVENTO EN LA BD
+				return "FALLO CONSULTA";
+			} else {
+				$resultado = $sentencia->get_result();
+				if ($resultado->num_rows == 0) { // COMPROBAR SI HA DEVULETO FILAS
+					$conexion->close();
+					return "NO CONSULTAS";
+				} else {
+					while ($fila = $resultado->fetch_assoc()) { // RECORRER EL RESULTADO E IR AÑADIENDO LAS FILAS AL ARRAY $consultas
+						$consultas[] = $fila['consulta'];
+					}
+					$conexion->close();
+					return $consultas;
+				}
 			}
+		}
+	function crear_consulta($usuario, $consulta) {
+		// VALIDAR LOS DATOS INTRODUCIDOS
+		if (empty($usuario)) {
+			return "USUARIO ERRONEO";
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar almacenar una consulta con el campo usuario vacío desde la función crear_consulta()", "error"); // ANOTAR EVENTO EN LA BD
+		}	else {
+			$usuario = strtolower($usuario); // PASAR LA CONSULTA A MINÚSCULAS
+		}
+
+		if (empty($consulta)) {
+			return "CONSULTA VACIA";
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar almacenar una consulta con el campo consulta vacío desde la función crear_consulta()", "error"); // ANOTAR EVENTO EN LA BD
+		}	else {
+			$consulta = strtolower($consulta); // PASAR LA CONSULTA A MINÚSCULAS
+			$consulta = str_replace(";", "", $consulta); // ELIMINAR ";"
 		}
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 
+		// INSERTAR EN LA BD
+		$sentencia = $conexion->prepare("INSERT INTO consultas VALUES(?, ?)");
+		$sentencia->bind_param("ss", $consulta, $usuario);
+		if (!$sentencia->execute()) {
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al intentar ejecutar la query INSERT INTO consultas VALUES('".$usuario."', '".$consulta."') desde la función crear_consulta()", "error");
+			return "FALLO CONSULTA";
+		} elseif ($sentencia->affected_rows == 0) {
+			$conexion->close();
+			return "FALLO CREAR";
+		} else {
+			$conexion->close();
+			return True;
+		}
+	}
+	// EXPORTAR CSV
+
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON LA CONSULTA QUE INTRODUZCA EL USUARIO ADMINISTRADOR. ADEMÁS ANOTA UN LOG CON LA CONSULTA EJECUTADA
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "CONSULTA VACIA" SI EL PARÁMETRO $consulta ESTÁ VACÍO, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+		- CONSULTA: INSTRUCCIÓN A EJECUTAR. NO PUEDE ESTAR VACÍA
+	*/
+	function exportar_csv_consulta($consulta) {
+		if (empty($consulta)) return "CONSULTA VACIA";
+		$consulta = strtolower($consulta); // PASAR A MINÚSCULAS LA CADENA PARA EVITAR ERRORES PROVOCADOS POR ESCRIBIR EL NOMBRE DE LAS TABLAS EN MAYÚSCULA
+		$consulta = str_replace(";", "", $consulta); // ELIMINAR ";"
+
+		$conexion = conexion_database("inventario");
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		$resultado_query = $conexion->query($consulta); // EJECUTAR LA CONSULTA
 		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA ES ERRÓNEA
 			$conexion->close();
-			registrar_evento(time(), $_SESSION['email'], "Se ha intentado ejecutar una consulta errónea desde la función exportar_csv_consulta(".$consulta.")", "error");
+			registrar_evento(time(), $_SESSION['email'], "Se ha intentado ejecutar una consulta errónea desde la función exportar_csv_consulta(".$consulta.")", "consulta");
 			return "FALLO CONSULTA";
-		} elseif ($resultado_query->num_rows <= 0) {
+		} elseif ($resultado_query->num_rows <= 0) { // COMPROBAR SI NO HA DEVUELTO NINGUNA FILA
 			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha ejecutado una consulta desde la función exportar_csv_consulta(".$consulta.")", "consulta");
 			return "CONSULTA SIN RESULTADOS";
 		} else {
+			registrar_evento(time(), $_SESSION['email'], "Se ha ejecutado una consulta desde la función exportar_csv_consulta(".$consulta.")", "consulta");
 			$fichero = "";
 			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
 				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
 					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
 				}
 				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
-				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+				$fichero .= "\r\n"; // AÑADIMOS SALTO DE LÍNEA
 			}
+			// CAMBIAR LAS CABECERAS PARA QUE EL FICHERO SE DESCARGE
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=consulta.csv");
-			// apt-get install php7.0-xml php7.0-mbstring
+			// Necesario instalar el siguiente paquete para ejecutar la función mb_convert_encoding -> apt-get install php7.0-xml php7.0-mbstring
 			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON LOS ARTÍCULOS DE LA BASE DE DATOS
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_csv_tabla_articulos() {
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
@@ -1041,15 +1109,22 @@
 					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
 				}
 				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
-				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+				$fichero .= "\r\n"; // AÑADIMOS SALTO DE LÍNEA
 			}
+			// CAMBIAR LAS CABECERAS PARA QUE EL FICHERO SE DESCARGE
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=articulos.csv");
-			// apt-get install php7.0-xml php7.0-mbstring
+			// Necesario instalar el siguiente paquete para ejecutar la función mb_convert_encoding -> apt-get install php7.0-xml php7.0-mbstring
 			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON LAS UBICACIONES DE LA BASE DE DATOS
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_csv_tabla_ubicaciones() {
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
@@ -1062,25 +1137,28 @@
 			$conexion->close();
 			return "CONSULTA SIN RESULTADOS";
 		} else {
-			//$fichero = "";
-			$archivo_final=fopen('ubicaciones.csv', 'w');
+			$fichero = "";
 			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
 				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
-					fwrite($archivo_final, $campo.";"); // AÑADIMOS CAMPOS AL FICHERO
+					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
 				}
-				//$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
-				fwrite($archivo_final,PHP_EOL); // AÑADIMOS SALTO DE LÍNEA
+				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+				$fichero .= "\r\n"; // AÑADIMOS SALTO DE LÍNEA
 			}
-			fclose($archivo_final);
+			// CAMBIAR LAS CABECERAS PARA QUE EL FICHERO SE DESCARGE
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=ubicaciones.csv");
-			// apt-get install php7.0-xml php7.0-mbstring
-			readfile("ubicaciones.csv");
-			//unlink("ubicaciones.csv");
-			//echo mb_convert_encoding($fichero, 'UTF-8');
+			// Necesario instalar el siguiente paquete para ejecutar la función mb_convert_encoding -> apt-get install php7.0-xml php7.0-mbstring
+			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON LOS USUARIOS DE LA BASE DE DATOS
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_csv_tabla_usuarios() {
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
@@ -1099,15 +1177,22 @@
 					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
 				}
 				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
-				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+				$fichero .= "\r\n"; // AÑADIMOS SALTO DE LÍNEA
 			}
+			// CAMBIAR LAS CABECERAS PARA QUE EL FICHERO SE DESCARGE
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=usuarios.csv");
-			// apt-get install php7.0-xml php7.0-mbstring
+			// Necesario instalar el siguiente paquete para ejecutar la función mb_convert_encoding -> apt-get install php7.0-xml php7.0-mbstring
 			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON EL CONTENIDO DE LA TABLA STOCK
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_csv_tabla_stock() {
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
@@ -1126,15 +1211,22 @@
 					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
 				}
 				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
-				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+				$fichero .= "\r\n"; // AÑADIMOS SALTO DE LÍNEA
 			}
+			// CAMBIAR LAS CABECERAS PARA QUE EL FICHERO SE DESCARGE
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=stock.csv");
-			// apt-get install php7.0-xml php7.0-mbstring
+			// Necesario instalar el siguiente paquete para ejecutar la función mb_convert_encoding -> apt-get install php7.0-xml php7.0-mbstring
 			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON EL CONTENIDO DE LA TABLA GESTIONA
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_csv_tabla_gestiona() {
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
@@ -1153,15 +1245,22 @@
 					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
 				}
 				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
-				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+				$fichero .= "\r\n"; // AÑADIMOS SALTO DE LÍNEA
 			}
+			// CAMBIAR LAS CABECERAS PARA QUE EL FICHERO SE DESCARGE
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=gestiona.csv");
-			// apt-get install php7.0-xml php7.0-mbstring
+			// Necesario instalar el siguiente paquete para ejecutar la función mb_convert_encoding -> apt-get install php7.0-xml php7.0-mbstring
 			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON EL CONTENIDO DE LA TABLA GESTIONA
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_csv_tabla_logs() {
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
@@ -1180,15 +1279,57 @@
 					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
 				}
 				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
-				$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+				$fichero .= "\r\n"; // AÑADIMOS SALTO DE LÍNEA
 			}
+			// CAMBIAR LAS CABECERAS PARA QUE EL FICHERO SE DESCARGE
 			header('Content-Type: text/csv; charset=utf-8');
 			header("Content-Disposition: attachment; filename=logs.csv");
-			// apt-get install php7.0-xml php7.0-mbstring
+			// Necesario instalar el siguiente paquete para ejecutar la función mb_convert_encoding -> apt-get install php7.0-xml php7.0-mbstring
 			echo mb_convert_encoding($fichero, 'UTF-8');
 			$conexion->close();
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON EL CONTENIDO DE LA TABLA GESTIONA
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
+	function exportar_csv_tabla_consultas() {
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM consultas"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM consultas desde la función exportar_csv_tabla_consultas", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$fichero = "";
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
+				}
+				$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
+				$fichero .= "\r\n"; // AÑADIMOS SALTO DE LÍNEA
+			}
+			// CAMBIAR LAS CABECERAS PARA QUE EL FICHERO SE DESCARGE
+			header('Content-Type: text/csv; charset=utf-8');
+			header("Content-Disposition: attachment; filename=consultas.csv");
+			// Necesario instalar el siguiente paquete para ejecutar la función mb_convert_encoding -> apt-get install php7.0-xml php7.0-mbstring
+			echo mb_convert_encoding($fichero, 'UTF-8');
+			$conexion->close();
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON EL CONTENIDO DE LA UBICACIÓN QUE SE PASE POR PARÁMETRO
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+			-UBICACION: CÓDIGO DE LA UBICACION DE LA QUE SE VA A HACER UN LISTADO DE SUS ARTÍCULOS
+	*/
 	function exportar_csv_contenido_ubicacion($ubicacion) {
 		if (empty($ubicacion)) return "CONSULTA VACIA";
 		$conexion = conexion_database();
@@ -1211,16 +1352,24 @@
 						$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
 					}
 					$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
-					$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+					$fichero .= "\r\n"; // AÑADIMOS SALTO DE LÍNEA
 				}
+				// CAMBIAR LAS CABECERAS PARA QUE EL FICHERO SE DESCARGE
 				header('Content-Type: text/csv; charset=utf-8');
 				header("Content-Disposition: attachment; filename=".$ubicacion.".csv");
-				// apt-get install php7.0-xml php7.0-mbstring
+				// Necesario instalar el siguiente paquete para ejecutar la función mb_convert_encoding -> apt-get install php7.0-xml php7.0-mbstring
 				echo mb_convert_encoding($fichero, 'UTF-8');
 				$conexion->close();
 			}
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON LISTADO DE UBICACIONES DONDE SE ENCUENTRA UN DETERMINADO ARTÍCULO
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+			-ARTICULO: CÓDIGO DEL ARTÍCULO DEL QUE SE VA A REALIZAR EL LISTADO
+	*/
 	function exportar_csv_ubicaciones($articulo) {
 		if (empty($articulo)) return "CONSULTA VACIA";
 		$conexion = conexion_database();
@@ -1243,11 +1392,12 @@
 						$fichero .= $campo.";"; // AÑADIMOS CAMPOS AL FICHERO
 					}
 					$fichero = substr($fichero, 0, -1); // ELIMINAR EL ÚLTIMO PUNTO Y COMA
-					$fichero .= PHP_EOL; // AÑADIMOS SALTO DE LÍNEA
+					$fichero .= "\r\n"; // AÑADIMOS SALTO DE LÍNEA
 				}
+				// CAMBIAR LAS CABECERAS PARA QUE EL FICHERO SE DESCARGE
 				header('Content-Type: text/csv; charset=utf-8');
-				header("Content-Disposition: attachment; filename=ubicaciones_de_".$articulo.".csv");
-				// apt-get install php7.0-xml php7.0-mbstring
+				header("Content-Disposition: attachment; filename=".$articulo.".csv");
+				// Necesario instalar el siguiente paquete para ejecutar la función mb_convert_encoding -> apt-get install php7.0-xml php7.0-mbstring
 				echo mb_convert_encoding($fichero, 'UTF-8');
 				$conexion->close();
 			}
@@ -1255,62 +1405,72 @@
 	}
 
 	// EXPORTAR EXCEL
-	function exportar_excel_consulta($consulta) {
-		require "PHP-EXCEL/vendor/autoload.php";
-		if (empty($consulta)) return "CONSULTA VACIA";
-		$consulta = strtolower($consulta); // PASAR A MINÚSCULAS LA CADENA PARA EVITAR ERRORES
-		$sqli = array("delete", "drop", "truncate", "update", "insert", "create", "commit", "rollback", "--", "#", "/*");
-		// COMPROBAR QUE LA CONSULTA NO CONTIENE DML, DCL ni DDL PARA EVITAR SQL INJECTION
-		foreach ($sqli as $instruccion) {
-			if (stripos($consulta, $instruccion) !== False) {
-				registrar_evento(time(), $_SESSION['email'], "Se ha intentado realizar SQL INJECTION desde la función exportar_csv_consulta con la sentencia ".$consulta, "error");
-				return "SQL INJECTION";
-			}
-		}
-		$conexion = conexion_database();
-		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO EXCEL CON LA CONSULTA QUE INTRODUZCA EL USUARIO ADMINISTRADOR. ADEMÁS ANOTA UN LOG CON LA CONSULTA EJECUTADA
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "CONSULTA VACIA" SI EL PARÁMETRO $consulta ESTÁ VACÍO, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+		- CONSULTA: INSTRUCCIÓN A EJECUTAR. NO PUEDE ESTAR VACÍA
+	*/
+	function exportar_excel_consulta($consulta) {
+		require "PHP-EXCEL/vendor/autoload.php"; // INCLUIR LIBRERÍA
+		if (empty($consulta)) return "CONSULTA VACIA";
+		$consulta = strtolower($consulta); // PASAR A MINÚSCULAS LA CADENA PARA EVITAR ERRORES PROVOCADOS POR ESCRIBIR EL NOMBRE DE LAS TABLAS EN MAYÚSCULA
+		$consulta = str_replace(";", "", $consulta); // ELIMINAR ";"
+
+		$conexion = conexion_database("inventario");
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		$resultado_query = $conexion->query($consulta); // EJECUTAR LA CONSULTA
 		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA ES ERRÓNEA
 			$conexion->close();
-			registrar_evento(time(), $_SESSION['email'], "Se ha intentado ejecutar una consulta errónea desde la función exportar_csv_consulta(".$consulta.")", "error");
+			registrar_evento(time(), $_SESSION['email'], "Se ha intentado ejecutar una consulta errónea desde la función exportar_excel_consulta(".$consulta.")", "consulta");
 			return "FALLO CONSULTA";
-		} elseif ($resultado_query->num_rows <= 0) {
+		} elseif ($resultado_query->num_rows <= 0) { // COMPROBAR SI NO HA DEVUELTO NINGUNA FILA
 			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha ejecutado una consulta desde la función exportar_excel_consulta(".$consulta.")", "consulta");
 			return "CONSULTA SIN RESULTADOS";
 		} else {
 			$contenido = array();
 			$contador = 0;
-			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS PARA METERLAS EN DOS ARRAYS ($cabeceras Y $contenido)
 				foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
-					$cabeceras[$indice] = $indice;
+					$cabeceras[$indice] = $indice; // ALMACENAR EL NOMBRE DE LAS CABECERAS
 					$contenido[$contador][$indice] = $campo; // AÑADIMOS CAMPOS AL FICHERO
 				}
 				$contador++;
 			}
 			$conexion->close();
+			// PASAR ESTOS DOS ARRAYS A UN FICHERO EXCEL HACIENDO USO DE LA LIBRERÍA PHP-EXCEL
 			$contenido = new ArrayIterator($contenido);
+			// CREAR LAS CABECERAS
 			foreach ($cabeceras as $cabecera) {
 				$cabecera_string[] = new ExcelHelper\Column('".$cabecera."',  '".$cabecera."',     10,     new ExcelHelper\CellStyle\Text());
 			}
 			$columnCollection = new ExcelHelper\ColumnCollection($cabecera_string);
 			$filename = sprintf('%s/consulta.xls', __DIR__, uniqid());
 			$phpExcel = new ExcelHelper\TableWorkbook($filename);
-			$worksheet = $phpExcel->addWorksheet("Consulta");
+			$worksheet = $phpExcel->addWorksheet("Consulta"); // TÍTULO DE LA OJA
 			$table = new ExcelHelper\Table($worksheet, 0, 0, $consulta, $contenido);
 			$table->setColumnCollection($columnCollection);
-			$phpExcel->writeTable($table);
+			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO
 			$phpExcel->close();
+			// CAMBIAR LAS CABECERAS PARA QUE SE DESCARGUE EL FICHERO
 			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 			header('Content-Disposition: attachment; filename="consulta.xls"');
 			readfile("consulta.xls");
 			unlink("consulta.xls");
-			// apt-get install php7.0-xml php7.0-mbstring
 
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO EXCEL CON LOS ARTÍCULOS DE LA BASE DE DATOS
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_excel_tabla_articulos() {
-		require "PHP-EXCEL/vendor/autoload.php";
+		require "PHP-EXCEL/vendor/autoload.php"; // INCLUIR LIBRERÍA
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		$resultado_query = $conexion->query("SELECT * FROM articulos"); // EJECUTAR LA CONSULTA
@@ -1346,14 +1506,21 @@
 			$table->setColumnCollection($columnCollection);
 			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
 			$phpExcel->close();
+			// CAMBIAR LAS CABECERAS PARA QUE SE DESCARGUE EL FICHERO
 			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 			header('Content-Disposition: attachment; filename="articulos.xls"');
 			readfile("articulos.xls"); // DESCARGARLO EN EL CLIENTE
 			unlink("articulos.xls"); // BORRAR EL FICHERO
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO EXCEL CON LAS UBICACIONES DE LA BASE DE DATOS
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_excel_tabla_ubicaciones() {
-		require "PHP-EXCEL/vendor/autoload.php";
+		require "PHP-EXCEL/vendor/autoload.php"; // INCLUIR LIBRERÍA NECESARIA
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		$resultado_query = $conexion->query("SELECT * FROM ubicaciones"); // EJECUTAR LA CONSULTA
@@ -1374,7 +1541,6 @@
 				$contador++;
 			}
 			$conexion->close();
-
 			// GENERAR EL EXCEL
 			$contenido = new ArrayIterator($contenido);
 			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
@@ -1389,14 +1555,21 @@
 			$table->setColumnCollection($columnCollection);
 			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
 			$phpExcel->close();
+			// CAMBIAR LAS CABECERAS PARA QUE SE DESCARGUE EL FICHERO
 			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 			header('Content-Disposition: attachment; filename="ubicaciones.xls"');
 			readfile("ubicaciones.xls"); // DESCARGARLO EN EL CLIENTE
 			unlink("ubicaciones.xls"); // BORRAR EL FICHERO
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO EXCEL CON LOS USUARIOS DE LA BASE DE DATOS
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_excel_tabla_usuarios() {
-		require "PHP-EXCEL/vendor/autoload.php";
+		require "PHP-EXCEL/vendor/autoload.php"; // INCLUIR LIBRERÍA NECESARIA
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		$resultado_query = $conexion->query("SELECT * FROM usuarios"); // EJECUTAR LA CONSULTA
@@ -1417,7 +1590,6 @@
 				$contador++;
 			}
 			$conexion->close();
-
 			// GENERAR EL EXCEL
 			$contenido = new ArrayIterator($contenido);
 			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
@@ -1433,14 +1605,21 @@
 			$table->setColumnCollection($columnCollection);
 			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
 			$phpExcel->close();
+			// CAMBIAR LAS CABECERAS PARA QUE SE DESCARGUE EL FICHERO
 			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 			header('Content-Disposition: attachment; filename="usuarios.xls"');
 			readfile("usuarios.xls"); // DESCARGARLO EN EL CLIENTE
 			unlink("usuarios.xls"); // BORRAR EL FICHERO
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO EXCEL CON EL CONTENIDO DE LA TABLA STOCK
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_excel_tabla_stock() {
-		require "PHP-EXCEL/vendor/autoload.php";
+		require "PHP-EXCEL/vendor/autoload.php"; // INCLUIR LIBRERÍA NECESARIA
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		$resultado_query = $conexion->query("SELECT * FROM stock"); // EJECUTAR LA CONSULTA
@@ -1461,7 +1640,6 @@
 				$contador++;
 			}
 			$conexion->close();
-
 			// GENERAR EL EXCEL
 			$contenido = new ArrayIterator($contenido);
 			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
@@ -1476,14 +1654,21 @@
 			$table->setColumnCollection($columnCollection);
 			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
 			$phpExcel->close();
+			// CAMBIAR LAS CABECERAS PARA QUE SE DESCARGUE EL FICHERO
 			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 			header('Content-Disposition: attachment; filename="stock.xls"');
 			readfile("stock.xls"); // DESCARGARLO EN EL CLIENTE
 			unlink("stock.xls"); // BORRAR EL FICHERO
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO EXCEL CON EL CONTENIDO DE LA TABLA GESTIONA
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_excel_tabla_gestiona() {
-		require "PHP-EXCEL/vendor/autoload.php";
+		require "PHP-EXCEL/vendor/autoload.php"; // INCLUIR LIBRERÍA NECESARIA
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		$resultado_query = $conexion->query("SELECT * FROM gestiona"); // EJECUTAR LA CONSULTA
@@ -1518,14 +1703,21 @@
 			$table->setColumnCollection($columnCollection);
 			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
 			$phpExcel->close();
+			// CAMBIAR LAS CABECERAS PARA QUE SE DESCARGUE EL FICHERO
 			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 			header('Content-Disposition: attachment; filename="gestiona.xls"');
 			readfile("gestiona.xls"); // DESCARGARLO EN EL CLIENTE
 			unlink("gestiona.xls"); // BORRAR EL FICHERO
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON EL CONTENIDO DE LA TABLA GESTIONA
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
 	function exportar_excel_tabla_logs() {
-		require "PHP-EXCEL/vendor/autoload.php";
+		require "PHP-EXCEL/vendor/autoload.php"; // INCLUIR LIBRERÍA NECESARIA
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
 		$resultado_query = $conexion->query("SELECT * FROM logs"); // EJECUTAR LA CONSULTA
@@ -1547,7 +1739,6 @@
 				$contador++;
 			}
 			$conexion->close();
-
 			// GENERAR EL EXCEL
 			$contenido = new ArrayIterator($contenido);
 			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
@@ -1563,14 +1754,70 @@
 			$table->setColumnCollection($columnCollection);
 			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
 			$phpExcel->close();
+			// CAMBIAR LAS CABECERAS PARA QUE SE DESCARGUE EL FICHERO
 			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 			header('Content-Disposition: attachment; filename="logs.xls"');
 			readfile("logs.xls"); // DESCARGARLO EN EL CLIENTE
 			unlink("logs.xls"); // BORRAR EL FICHERO
 		}
 	}
-	function exportar_excel_contenido_ubicacion($ubicacion) {
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO CSV CON EL CONTENIDO DE LA TABLA GESTIONA
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+	*/
+	function exportar_excel_tabla_consultas() {
 		require "PHP-EXCEL/vendor/autoload.php";
+		$conexion = conexion_database();
+		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
+		$resultado_query = $conexion->query("SELECT * FROM consultas"); // EJECUTAR LA CONSULTA
+		if (!is_object($resultado_query)) { // COMPROBAR SI DEVUELVE UN ARRAY, EN CASO NEGATIVO LA CONSULTA HA FALLADO
+			$conexion->close();
+			registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar al ejecutar la query SELECT * FROM consultas desde la función exportar_excel_tabla_consultas", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO CONSULTA";
+		} elseif ($resultado_query->num_rows <= 0) {
+			$conexion->close();
+			return "CONSULTA SIN RESULTADOS";
+		} else {
+			$contenido = array();
+			$contador = 0;
+			while ($fila = $resultado_query->fetch_assoc()) { // RECORRER TODAS LAS FILAS DEVUELTAS
+				foreach ($fila as $indice => $campo) { // RECORRER LOS CAMPOS DE CADA FILA
+					$contenido[$contador][$indice] = $campo; // AÑADIMOS LOS CAMPOS AL ARRAY CONTENIDO
+				}
+				$contador++;
+			}
+			$conexion->close();
+			// GENERAR EL EXCEL
+			$contenido = new ArrayIterator($contenido);
+			$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
+			    new ExcelHelper\Column('consulta',  'consulta',     10,     new ExcelHelper\CellStyle\Text()),
+			    new ExcelHelper\Column('usuario',  'Usuario',   15,     new ExcelHelper\CellStyle\Text())
+			]);
+			$filename = sprintf('%s/consultas.xls', __DIR__, uniqid()); // NOMBRAR EL FICHERO
+			$phpExcel = new ExcelHelper\TableWorkbook($filename); // CREAR EL FICHERO
+			$worksheet = $phpExcel->addWorksheet("Logs"); // DARLE NOMBRE A LA HOJA
+			$table = new ExcelHelper\Table($worksheet, 0, 0, 'Contenido de la tabla consultas', $contenido);
+			$table->setColumnCollection($columnCollection);
+			$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
+			$phpExcel->close();
+			// CAMBIAR LAS CABECERAS PARA QUE SE DESCARGUE EL FICHERO
+			header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
+			header('Content-Disposition: attachment; filename="consultas.xls"');
+			readfile("consultas.xls"); // DESCARGARLO EN EL CLIENTE
+			unlink("consultas.xls"); // BORRAR EL FICHERO
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO EXCEL CON EL CONTENIDO DE LA UBICACIÓN QUE SE PASE POR PARÁMETRO
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+			-UBICACION: CÓDIGO DE LA UBICACION DE LA QUE SE VA A HACER UN LISTADO DE SUS ARTÍCULOS
+	*/
+	function exportar_excel_contenido_ubicacion($ubicacion) {
+		require "PHP-EXCEL/vendor/autoload.php"; // INCLUIR LIBRERÍA NECESARIA
 		if (empty($ubicacion)) return "CONSULTA VACIA";
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
@@ -1595,7 +1842,6 @@
 					$contador++;
 				}
 				$conexion->close();
-
 				// GENERAR EL EXCEL
 				$contenido = new ArrayIterator($contenido);
 				$columnCollection = new ExcelHelper\ColumnCollection([ // DEFINIR LAS COLUMNAS
@@ -1611,6 +1857,7 @@
 				$table->setColumnCollection($columnCollection);
 				$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
 				$phpExcel->close();
+				// CAMBIAR LAS CABECERAS PARA QUE SE DESCARGUE EL FICHERO
 				header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 				header('Content-Disposition: attachment; filename="'.$ubicacion.'.xls"');
 				readfile($ubicacion.".xls"); // DESCARGARLO EN EL CLIENTE
@@ -1618,8 +1865,15 @@
 			}
 		}
 	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA GENERAR UN FICHERO EXCEL CON LISTADO DE UBICACIONES DONDE SE ENCUENTRA UN DETERMINADO ARTÍCULO
+		RESULTADO: DEVUELVE UN FICHERO SI LA CONSULTA FUNCIONA Y ENCUENTRA FILAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO CONSULTA" SI NO SE PUEDE EJECUTAR LA CONSULTA, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+			-ARTICULO: CÓDIGO DEL ARTÍCULO DEL QUE SE VA A REALIZAR EL LISTADO
+	*/
 	function exportar_excel_ubicaciones($articulo) {
-		require "PHP-EXCEL/vendor/autoload.php";
+		require "PHP-EXCEL/vendor/autoload.php"; // INCLUIR LIBRERÍA NECESARIA
 		if (empty($articulo)) return "CONSULTA VACIA";
 		$conexion = conexion_database();
 		if ($conexion === False) return "ERROR EN LA BD"; // COMPROBAR LA CONECTIVIDAD CON LA BD
@@ -1659,6 +1913,7 @@
 				$table->setColumnCollection($columnCollection);
 				$phpExcel->writeTable($table); // ESCRIBIR EL CONTENIDO EN EL EXCEL
 				$phpExcel->close();
+				// CAMBIAR LAS CABECERAS PARA QUE SE DESCARGUE EL FICHERO
 				header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 				header('Content-Disposition: attachment; filename="'.$articulo.'.xls"');
 				readfile($articulo.".xls"); // DESCARGARLO EN EL CLIENTE
@@ -1668,55 +1923,24 @@
 	}
 
 	// IMPORTAR DESDE CSV
+
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA IMPORTAR DATOS A LA TABLA ARTÍCULOS DESDE UN FICHERO CSV. LAS LÍNEAS INCORRECTAS SON DESCARTADAS. UNA VEZ DESCARTADAS LAS LÍNEAS CON FORMATO ERRÓNEO SE TRATAN DE INSERTAR Y SI ALGUNA FALLA SE REALIZA UN ROLLBACK (FUNCIÓN TRANSACCIONAL)
+		 	*** LOS DATOS DEBEN DE ESTAR CODIFICADOS EN UTF8 PARA EVITAR PROBLEMAS DE CARACTERES ***
+		RESULTADO: DEVUELVE UN ARRAY CON LAS FILAS INSERTADAS/DESCARTADAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO ABRIR" SI NO SE PUEDE ABRIR EL FICHERO SUBIDO, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+			-FICHERO: FICHERO CSV DEL QUE SE VA A IMPORTAR LOS DATOS
+	*/
 	function importar_csv_tabla_articulos($fichero) {
 		if (@$manejador_fichero=fopen($fichero, 'r')) { // ABRIR EL FICHERO EN MODO LECTURA
 			$contador = 1;
 			$errores = array();
 			$inserciones = array();
-			while (($linea = fgetcsv($manejador_fichero, 1000, ";")) !== FALSE) { // RECORRER EL FICHERO DIVIDIENDO LOS CAMPOS POR ";"
-				//$linea = array_map("trim", $linea);
-				//$linea = array_map("utf8_encode", $linea); // CONVERTIR LOS CARÁCTERES A UTF-8, SOLUCIONANDO ASÍ LOS PROBLEMAS DE TILDES Y Ñ
-				//print_r($linea);
-				if (count($linea) != 3) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un número de campos incorrecto"; // COMPROBAR QUE TIENE 3 CAMPOS
-				elseif (empty($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo código vacío y no se ha podido insertar"; // COMPROBAR QUE EL CÓDIGO NO ESTÁ VACÍO
-				elseif (empty($linea[1])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo descripción vacío y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
-				else {
-					$datos_a_insertar[$contador] = $linea; // SI LA VALIDACIÓN ES CORRECTA, METEMOS LA FILA EN UN ARRAY
-				}
-				$contador++;
-			}
-			if (!isset($datos_a_insertar)) return "SIN DATOS"; // SI NINGUNA FILA HA PASADO LA VALIDACIÓN TERMINAMOS LA FUNCIÓN
-			$conexion = conexion_database();
-			$sentencia = $conexion->prepare("INSERT INTO articulos VALUES (? , ?, ?)");
-			$sentencia->bind_param("sss", $codigo, $descripcion, $observaciones); // EVITAR SQL INJECTION
-			foreach ($datos_a_insertar as $articulo) { // RECORRER LOS DATOS A INSERTAR
-				// VINCULAR LOS DATOS
-				$codigo = strtoupper($articulo[0]);
-				$descripcion = ucwords(strtolower($articulo[1]));
-				if (empty($articulo[2])) $observaciones = null;
-				else $observaciones = $articulo[2];
-				if (!$sentencia->execute()) { // COMPROBAR SI SE HA INSERTADO CORRECTAMENTE
-					registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO articulos VALUES ('".$codigo."', '".$descripcion."', '".$observaciones."') desde la función importar_csv_tabla_articulos()", "error"); // ANOTAR EVENTO EN LA BD
-					$errores[] = "Ha fallado la inserción de la línea ".implode(";", $articulo);
-				} else {
-					$inserciones[] = "Se ha insertado correctamente la línea ".implode(";", $articulo);
-				}
-			}
-			return array("errores" => $errores, "inserciones" => $inserciones);
-		} else {
-			registrar_evento(time(), $_SESSION['email'], "Fallo al abrir el fichero para importar datos desde la función importar_csv_tabla_articulos()", "error"); // ANOTAR EVENTO EN LA BD
-			return "FALLO ABRIR";
-		}
-		fclose($manejador_fichero);
-	}
-	function importar_csv_tabla_ubicaciones($fichero) {
-		if (@$manejador_fichero=fopen($fichero, 'r')) { // ABRIR EL FICHERO EN MODO LECTURA
-			$contador = 1;
-			$errores = array();
-			$inserciones = array();
-			while (($linea = fgetcsv($manejador_fichero, 1000, ";")) !== FALSE) { // RECORRER EL FICHERO DIVIDIENDO LOS CAMPOS POR ";"
-				//$linea = array_map("utf8_encode", $linea);
-				if (count($linea) < 2) $errores[] = "La línea ".$contador." ".implode(";", $linea)." debe tener como mínimo 2 campos"; // COMPROBAR QUE TIENE 3 CAMPOS
+			// RECORRER EL FICHERO DIVIDIENDO LOS CAMPOS POR ";"
+			while (($linea = fgetcsv($manejador_fichero, 1000, ";")) !== FALSE) {
+				// VALIDAR LOS DATOS, EN CASO DE NO CUMPLIR LOS REQUISITOS AÑADIR LA FILA AL ARRAY $errores
+				if (count($linea) < 2) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un número de campos incorrecto"; // COMPROBAR QUE TIENE 3 CAMPOS
 				elseif (empty($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo código vacío y no se ha podido insertar"; // COMPROBAR QUE EL CÓDIGO NO ESTÁ VACÍO
 				elseif (empty($linea[1])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo descripción vacío y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
 				elseif (!validar_codigo($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un código erróneo y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
@@ -1725,28 +1949,290 @@
 				}
 				$contador++;
 			}
+			fclose($manejador_fichero);
+			if (!isset($datos_a_insertar)) return "SIN DATOS"; // SI NINGUNA FILA HA PASADO LA VALIDACIÓN TERMINAMOS LA FUNCIÓN
+			$conexion = conexion_database();
+			$sentencia = $conexion->prepare("INSERT INTO articulos VALUES (? , ?, ?)");
+			$sentencia->bind_param("sss", $codigo, $descripcion, $observaciones); // EVITAR SQL INJECTION
+			// INICIAR TRANSACCIÓN
+			$transaccion = True;
+			$conexion->autocommit(false); // INICIAR TRANSACCIÓN
+			foreach ($datos_a_insertar as $articulo) { // RECORRER LOS DATOS A INSERTAR
+				// VINCULAR LOS DATOS
+				$codigo = strtoupper($articulo[0]);
+				$descripcion = ucwords(strtolower($articulo[1]));
+				if (empty($articulo[2])) $observaciones = null;
+				else $observaciones = $articulo[2];
+				if (!$sentencia->execute()) { // EJECUTAR EL INSERT Y COMPROBAR SI SE HA INSERTADO CORRECTAMENTE
+					registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO articulos VALUES ('".$codigo."', '".$descripcion."', '".$observaciones."') desde la función importar_csv_tabla_articulos()", "error"); // ANOTAR EVENTO EN LA BD
+					$errores[] = "Ha fallado la inserción de la línea ".implode(";", $articulo); // ANOTAR EL ERROR
+					$transaccion = False;
+				} else {
+					$inserciones[] = "Se ha insertado correctamente la línea ".implode(";", $articulo); // ANOTAR LA INSERCIÓN
+				}
+			}
+			// UNA VEZ TERMINADOS LOS INSERTS COMPROBAMOS SI ALGUNO HA FALLADO. DE SER ASÍ HACEMOS UN ROLLBACK E INFORMAMOS AL USUARIO. EN CASO CONTRARIO CONFIRMAMOS LOS CAMBIOS
+			if ($transaccion === False) {
+				$conexion->rollback();
+				$inserciones = str_replace("Se ha insertado correctamente la línea", "No se ha podido insertar la siguiente línea debido al fallo en la inserción de alguna línea anterior: ", $inserciones);
+			  $errores = array_merge($errores, $inserciones);
+			  $inserciones = array();
+			} else $conexion->commit();
+			$conexion->autocommit(True); // SI TODO HA IDO BIEN CONFIRMAMOS LOS CAMBIOS
+			$conexion->close();
+			return array("errores" => $errores, "inserciones" => $inserciones);
+		} else { // INFORMAR DEL ERROR SI NO SE PUEDE ABRIR EL FICHERO
+			registrar_evento(time(), $_SESSION['email'], "Fallo al abrir el fichero para importar datos desde la función importar_csv_tabla_articulos()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO ABRIR";
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA IMPORTAR DATOS A LA TABLA UBICACIONES DESDE UN FICHERO CSV. LAS LÍNEAS INCORRECTAS SON DESCARTADAS. UNA VEZ DESCARTADAS LAS LÍNEAS CON FORMATO ERRÓNEO SE TRATAN DE INSERTAR Y SI ALGUNA FALLA SE REALIZA UN ROLLBACK (FUNCIÓN TRANSACCIONAL)
+		 	*** LOS DATOS DEBEN DE ESTAR CODIFICADOS EN UTF8 PARA EVITAR PROBLEMAS DE CARACTERES ***
+		RESULTADO: DEVUELVE UN ARRAY CON LAS FILAS INSERTADAS/DESCARTADAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO ABRIR" SI NO SE PUEDE ABRIR EL FICHERO SUBIDO, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+			-FICHERO: FICHERO CSV DEL QUE SE VA A IMPORTAR LOS DATOS
+	*/
+	function importar_csv_tabla_ubicaciones($fichero) {
+		if (@$manejador_fichero=fopen($fichero, 'r')) { // ABRIR EL FICHERO EN MODO LECTURA
+			$contador = 1;
+			$errores = array();
+			$inserciones = array();
+			// RECORRER EL FICHERO DIVIDIENDO LOS CAMPOS POR ";"
+			while (($linea = fgetcsv($manejador_fichero, 1000, ";")) !== FALSE) {
+				// VALIDAR LOS DATOS, EN CASO DE NO CUMPLIR LOS REQUISITOS AÑADIR LA FILA AL ARRAY $errores
+				if (count($linea) < 2) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un número de campos incorrecto"; // COMPROBAR QUE TIENE 3 CAMPOS
+				elseif (empty($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo código vacío y no se ha podido insertar"; // COMPROBAR QUE EL CÓDIGO NO ESTÁ VACÍO
+				elseif (empty($linea[1])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo descripción vacío y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
+				elseif (!validar_codigo($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un código erróneo y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
+				else {
+					$datos_a_insertar[$contador] = $linea; // SI LA VALIDACIÓN ES CORRECTA, METEMOS LA FILA EN UN ARRAY
+				}
+				$contador++;
+			}
+			fclose($manejador_fichero);
 			if (!isset($datos_a_insertar)) return $errores; // SI NINGUNA FILA HA PASADO LA VALIDACIÓN TERMINAMOS LA FUNCIÓN
 			$conexion = conexion_database();
 			$sentencia = $conexion->prepare("INSERT INTO ubicaciones VALUES (? , ?, ?)");
 			$sentencia->bind_param("sss", $codigo, $descripcion, $observaciones); // EVITAR SQL INJECTION
+			// INICIAR TRANSACCIÓN
+			$transaccion = True;
+			$conexion->autocommit(false); // INICIAR TRANSACCIÓN
 			foreach ($datos_a_insertar as $ubicacion) { // RECORRER LOS DATOS A INSERTAR
 				// VINCULAR LOS DATOS
 				$codigo = strtoupper($ubicacion[0]);
 				$descripcion = ucwords(strtolower($ubicacion[1]));
 				if (empty($ubicacion[2])) $observaciones = null;
 				else $observaciones = $ubicacion[2];
-				if (!$sentencia->execute()) { // COMPROBAR SI SE HA INSERTADO CORRECTAMENTE
+				if (!$sentencia->execute()) { // EJECUTAR EL INSERT Y COMPROBAR SI SE HA INSERTADO CORRECTAMENTE
 					registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO ubicaciones VALUES ('".$codigo."', '".$descripcion."', '".$observaciones."') desde la función importar_csv_tabla_ubicaciones()", "error"); // ANOTAR EVENTO EN LA BD
-					$errores[] = "Ha fallado la inserción de la línea ".implode(";", $ubicacion);
+					$errores[] = "Ha fallado la inserción de la línea ".implode(";", $ubicacion); // ANOTAR EL ERROR
+					$transaccion = False;
 				} else {
-					$inserciones[] = "Se ha insertado correctamente la línea ".implode(";", $ubicacion);
+					$inserciones[] = "Se ha insertado correctamente la línea ".implode(";", $ubicacion); // ANOTAR LA INSERCIÓN
 				}
 			}
+			// UNA VEZ TERMINADOS LOS INSERTS COMPROBAMOS SI ALGUNO HA FALLADO. DE SER ASÍ HACEMOS UN ROLLBACK E INFORMAMOS AL USUARIO. EN CASO CONTRARIO CONFIRMAMOS LOS CAMBIOS
+			if ($transaccion === False) {
+				$conexion->rollback();
+				$inserciones = str_replace("Se ha insertado correctamente la línea", "No se ha podido insertar la siguiente línea debido al fallo en la inserción de alguna línea anterior: ", $inserciones);
+			  $errores = array_merge($errores, $inserciones);
+			  $inserciones = array();
+			} else $conexion->commit();
+			$conexion->autocommit(True); // SI TODO HA IDO BIEN CONFIRMAMOS LOS CAMBIOS
+			$conexion->close();
 			return array("errores" => $errores, "inserciones" => $inserciones);
-		} else {
+		} else { // INFORMAR DEL ERROR SI NO SE PUEDE ABRIR EL FICHERO
 			registrar_evento(time(), $_SESSION['email'], "Fallo al abrir el fichero para importar datos desde la función importar_csv_tabla_ubicaciones()", "error"); // ANOTAR EVENTO EN LA BD
 			return "FALLO ABRIR";
 		}
-		fclose($manejador_fichero);
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA IMPORTAR DATOS A LA TABLA USUARIOS DESDE UN FICHERO CSV. LAS LÍNEAS INCORRECTAS SON DESCARTADAS. UNA VEZ DESCARTADAS LAS LÍNEAS CON FORMATO ERRÓNEO SE TRATAN DE INSERTAR Y SI ALGUNA FALLA SE REALIZA UN ROLLBACK (FUNCIÓN TRANSACCIONAL)
+		 	*** LOS DATOS DEBEN DE ESTAR CODIFICADOS EN UTF8 PARA EVITAR PROBLEMAS DE CARACTERES ***
+		RESULTADO: DEVUELVE UN ARRAY CON LAS FILAS INSERTADAS/DESCARTADAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO ABRIR" SI NO SE PUEDE ABRIR EL FICHERO SUBIDO, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+			-FICHERO: FICHERO CSV DEL QUE SE VA A IMPORTAR LOS DATOS
+	*/
+	function importar_csv_tabla_usuarios($fichero) {
+		if (@$manejador_fichero=fopen($fichero, 'r')) { // ABRIR EL FICHERO EN MODO LECTURA
+			$contador = 1;
+			$errores = array();
+			$inserciones = array();
+			// RECORRER EL FICHERO DIVIDIENDO LOS CAMPOS POR ";"
+			while (($linea = fgetcsv($manejador_fichero, 1000, ";")) !== FALSE) {
+				// VALIDAR LOS DATOS, EN CASO DE NO CUMPLIR LOS REQUISITOS AÑADIR LA FILA AL ARRAY $errores
+				if (count($linea) != 4) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un número de campos incorrecto"; // COMPROBAR QUE TIENE 4 CAMPOS
+				elseif (empty($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo email vacío y no se ha podido insertar"; // COMPROBAR QUE EL CÓDIGO NO ESTÁ VACÍO
+				elseif (empty($linea[1])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo password vacío y no se ha podido insertar"; // COMPROBAR QUE LA PASSWORD NO ESTÁ VACÍA
+				elseif (empty($linea[3])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo tipo vacío y no se ha podido insertar"; // COMPROBAR QUE EL CAMPO TIPO NO ESTÁ VACÍO
+				elseif (!filter_var($linea[0], FILTER_VALIDATE_EMAIL)) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un email erróneo y no se ha podido insertar"; // COMPROBAR QUE ES UN EMAIL
+				elseif ($linea[3] !== "estandar" and $linea[3] !== "editor" and $linea[3] !== "administrador") "La línea ".$contador." ".implode(";", $linea)." tiene un valor incorrecto en el campo tipo"; // COMPROBAR QUE EL CAMPO TIPO NO ESTÁ VACÍO
+				else {
+					$datos_a_insertar[$contador] = $linea; // SI LA VALIDACIÓN ES CORRECTA, METEMOS LA FILA EN UN ARRAY
+				}
+				$contador++;
+			}
+			fclose($manejador_fichero);
+			if (!isset($datos_a_insertar)) return $errores; // SI NINGUNA FILA HA PASADO LA VALIDACIÓN TERMINAMOS LA FUNCIÓN
+			$conexion = conexion_database();
+			$sentencia = $conexion->prepare("INSERT INTO usuarios VALUES (? , ? , ? , ?)");
+			$sentencia->bind_param("ssss", $email, $password, $nombre, $tipo); // EVITAR SQL INJECTION
+			// INICIAR TRANSACCIÓN
+			$transaccion = True;
+			$conexion->autocommit(false); // INICIAR TRANSACCIÓN
+			foreach ($datos_a_insertar as $usuario) { // RECORRER LOS DATOS A INSERTAR
+				// VINCULAR LOS DATOS
+				$email = strtolower($usuario[0]);
+				$password = $usuario[1];
+				if (empty($usuario[2])) $nombre = null;
+				else $nombre = ucwords(strtolower($usuario[2]));
+				$tipo = strtolower($usuario[3]);
+				if (!$sentencia->execute()) { // EJECUTAR EL INSERT Y COMPROBAR SI SE HA INSERTADO CORRECTAMENTE
+					registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO usuarios VALUES ('".$email."', '".$password."', '".$nombre."', '".$tipo."') desde la función importar_csv_tabla_usuarios()", "error"); // ANOTAR EVENTO EN LA BD
+					$errores[] = "Ha fallado la inserción de la línea ".implode(";", $usuario); // ANOTAR EL ERROR
+					$transaccion = False;
+				} else {
+					$inserciones[] = "Se ha insertado correctamente la línea ".implode(";", $usuario); // ANOTAR LA INSERCIÓN
+				}
+			}
+			// UNA VEZ TERMINADOS LOS INSERTS COMPROBAMOS SI ALGUNO HA FALLADO. DE SER ASÍ HACEMOS UN ROLLBACK E INFORMAMOS AL USUARIO. EN CASO CONTRARIO CONFIRMAMOS LOS CAMBIOS
+			if ($transaccion === False) {
+				$conexion->rollback();
+				$inserciones = str_replace("Se ha insertado correctamente la línea", "No se ha podido insertar la siguiente línea debido al fallo en la inserción de alguna línea anterior: ", $inserciones);
+			  $errores = array_merge($errores, $inserciones);
+			  $inserciones = array();
+			} else $conexion->commit();
+			$conexion->autocommit(True);
+			$conexion->close();
+			return array("errores" => $errores, "inserciones" => $inserciones);
+		} else { // INFORMAR DEL ERROR SI NO SE PUEDE ABRIR EL FICHERO
+			registrar_evento(time(), $_SESSION['email'], "Fallo al abrir el fichero para importar datos desde la función importar_csv_tabla_usuarios()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO ABRIR";
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA IMPORTAR DATOS A LA TABLA GESTIONA DESDE UN FICHERO CSV. LAS LÍNEAS INCORRECTAS SON DESCARTADAS. UNA VEZ DESCARTADAS LAS LÍNEAS CON FORMATO ERRÓNEO SE TRATAN DE INSERTAR Y SI ALGUNA FALLA SE REALIZA UN ROLLBACK (FUNCIÓN TRANSACCIONAL)
+		 	*** LOS DATOS DEBEN DE ESTAR CODIFICADOS EN UTF8 PARA EVITAR PROBLEMAS DE CARACTERES ***
+		RESULTADO: DEVUELVE UN ARRAY CON LAS FILAS INSERTADAS/DESCARTADAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO ABRIR" SI NO SE PUEDE ABRIR EL FICHERO SUBIDO, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+			-FICHERO: FICHERO CSV DEL QUE SE VA A IMPORTAR LOS DATOS
+	*/
+	function importar_csv_tabla_gestiona($fichero) {
+		if (@$manejador_fichero=fopen($fichero, 'r')) { // ABRIR EL FICHERO EN MODO LECTURA
+			$contador = 1;
+			$errores = array();
+			$inserciones = array();
+			// RECORRER EL FICHERO DIVIDIENDO LOS CAMPOS POR ";"
+			while (($linea = fgetcsv($manejador_fichero, 1000, ";")) !== FALSE) {
+				// VALIDAR LOS DATOS, EN CASO DE NO CUMPLIR LOS REQUISITOS AÑADIR LA FILA AL ARRAY $errores
+				if (count($linea) != 2) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un número de campos incorrecto"; // COMPROBAR QUE TIENE 2 CAMPOS
+				elseif (empty($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo ubicación vacío y no se ha podido insertar"; // COMPROBAR QUE EL CÓDIGO NO ESTÁ VACÍO
+				elseif (empty($linea[1])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo usuario vacío y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
+				else {
+					$datos_a_insertar[$contador] = $linea; // SI LA VALIDACIÓN ES CORRECTA, METEMOS LA FILA EN UN ARRAY
+				}
+				$contador++;
+			}
+			fclose($manejador_fichero);
+			if (!isset($datos_a_insertar)) return "SIN DATOS"; // SI NINGUNA FILA HA PASADO LA VALIDACIÓN TERMINAMOS LA FUNCIÓN
+			$conexion = conexion_database();
+			$sentencia = $conexion->prepare("INSERT INTO gestiona VALUES (? , ?)");
+			$sentencia->bind_param("ss", $ubicacion, $usuario); // EVITAR SQL INJECTION
+			// INICIAR TRANSACCIÓN
+			$transaccion = True;
+			$conexion->autocommit(false); // INICIAR TRANSACCIÓN
+			foreach ($datos_a_insertar as $gestiona) { // RECORRER LOS DATOS A INSERTAR
+				// VINCULAR LOS DATOS
+				$ubicacion = strtoupper($gestiona[0]);
+				$usuario = strtolower($gestiona[1]);
+				if (!$sentencia->execute()) { // EJECUTAR EL INSERT Y COMPROBAR SI SE HA INSERTADO CORRECTAMENTE
+					registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO gestiona VALUES ('".$ubicacion."', '".$usuario."') desde la función importar_csv_tabla_gestiona()", "error"); // ANOTAR EVENTO EN LA BD
+					$errores[] = "Ha fallado la inserción de la línea ".implode(";", $gestiona); // ANOTAR EL ERROR
+					$transaccion = False;
+				} else {
+					$inserciones[] = "Se ha insertado correctamente la línea ".implode(";", $gestiona); // ANOTAR LA INSERCIÓN
+				}
+			}
+			// UNA VEZ TERMINADOS LOS INSERTS COMPROBAMOS SI ALGUNO HA FALLADO. DE SER ASÍ HACEMOS UN ROLLBACK E INFORMAMOS AL USUARIO. EN CASO CONTRARIO CONFIRMAMOS LOS CAMBIOS
+			if ($transaccion === False) {
+				$conexion->rollback();
+				$inserciones = str_replace("Se ha insertado correctamente la línea", "No se ha podido insertar la siguiente línea debido al fallo en la inserción de alguna línea anterior: ", $inserciones);
+			  $errores = array_merge($errores, $inserciones);
+			  $inserciones = array();
+			} else $conexion->commit(); // SI TODO HA IDO BIEN CONFIRMAMOS LOS CAMBIOS
+			$conexion->autocommit(True);
+			$conexion->close();
+			return array("errores" => $errores, "inserciones" => $inserciones);
+		} else { // INFORMAR DEL ERROR SI NO SE PUEDE ABRIR EL FICHERO
+			registrar_evento(time(), $_SESSION['email'], "Fallo al abrir el fichero para importar datos desde la función importar_csv_tabla_articulos()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO ABRIR";
+		}
+	}
+	/*
+		DESCRIPCIÓN: FUNCIÓN UTILIZADA PARA IMPORTAR DATOS A LA TABLA STOCK DESDE UN FICHERO CSV. LAS LÍNEAS INCORRECTAS SON DESCARTADAS. UNA VEZ DESCARTADAS LAS LÍNEAS CON FORMATO ERRÓNEO SE TRATAN DE INSERTAR Y SI ALGUNA FALLA SE REALIZA UN ROLLBACK (FUNCIÓN TRANSACCIONAL)
+			*** LOS DATOS DEBEN DE ESTAR CODIFICADOS EN UTF8 PARA EVITAR PROBLEMAS DE CARACTERES ***
+		RESULTADO: DEVUELVE UN ARRAY CON LAS FILAS INSERTADAS/DESCARTADAS, "ERROR EN LA BD" SI FALLA LA CONEXIÓN, "FALLO ABRIR" SI NO SE PUEDE ABRIR EL FICHERO SUBIDO, "CONSULTA SIN RESULTADOS" SI NO DEVUELVE NINGÚN RESULTADO
+		LLAMADA: ES LLAMADA DESDE gestionar_datos.php
+		PARÁMETROS:
+			-FICHERO: FICHERO CSV DEL QUE SE VA A IMPORTAR LOS DATOS
+	*/
+	function importar_csv_tabla_stock($fichero) {
+		if (@$manejador_fichero=fopen($fichero, 'r')) { // ABRIR EL FICHERO EN MODO LECTURA
+			$contador = 1;
+			$errores = array();
+			$inserciones = array();
+			// RECORRER EL FICHERO DIVIDIENDO LOS CAMPOS POR ";"
+			while (($linea = fgetcsv($manejador_fichero, 1000, ";")) !== FALSE) {
+				// VALIDAR LOS DATOS, EN CASO DE NO CUMPLIR LOS REQUISITOS AÑADIR LA FILA AL ARRAY $errores
+				if (count($linea) != 3) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un número de campos incorrecto"; // COMPROBAR QUE TIENE 3 CAMPOS
+				elseif (empty($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo ubicación vacío y no se ha podido insertar"; // COMPROBAR QUE EL CÓDIGO NO ESTÁ VACÍO
+				elseif (empty($linea[1])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo artículo vacío y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
+				elseif (empty($linea[2])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene el campo cantidad vacío y no se ha podido insertar"; // COMPROBAR QUE LA CANTIDAD NO ESTÁ VACÍA
+				elseif (!validar_codigo($linea[0])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene una ubicación con un código erróneo y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
+				elseif (!validar_codigo($linea[1])) $errores[] = "La línea ".$contador." ".implode(";", $linea)." tiene un artículo con un código erróneo y no se ha podido insertar"; // COMPROBAR QUE LA DESCRIPCIÓN NO ESTÁ VACÍA
+				else {
+					$datos_a_insertar[$contador] = $linea; // SI LA VALIDACIÓN ES CORRECTA, METEMOS LA FILA EN UN ARRAY
+				}
+				$contador++;
+			}
+			fclose($manejador_fichero);
+			if (!isset($datos_a_insertar)) return "SIN DATOS"; // SI NINGUNA FILA HA PASADO LA VALIDACIÓN TERMINAMOS LA FUNCIÓN
+			$conexion = conexion_database();
+			$sentencia = $conexion->prepare("INSERT INTO stock VALUES (? , ? , ?)");
+			$sentencia->bind_param("ssi", $ubicacion, $articulo, $cantidad); // EVITAR SQL INJECTION
+			// INICIAR TRANSACCIÓN
+			$transaccion = True;
+			$conexion->autocommit(false); // INICIAR TRANSACCIÓN
+			foreach ($datos_a_insertar as $stock) { // RECORRER LOS DATOS A INSERTAR
+				// VINCULAR LOS DATOS
+				$ubicacion = strtoupper($stock[0]);
+				$articulo = strtoupper($stock[1]);
+				$cantidad = $stock[2];
+				if (!$sentencia->execute()) { // EJECUTAR EL INSERT Y COMPROBAR SI SE HA INSERTADO CORRECTAMENTE
+					registrar_evento(time(), $_SESSION['email'], "Se ha producido un error al intentar ejecutar la query INSERT INTO stock VALUES ('".$ubicacion."', '".$articulo."', ".$cantidad.") desde la función importar_csv_tabla_stock()", "error"); // ANOTAR EVENTO EN LA BD
+					$errores[] = "Ha fallado la inserción de la línea ".implode(";", $stock); // ANOTAR EL ERROR
+					$transaccion = False;
+				} else {
+					$inserciones[] = "Se ha insertado correctamente la línea ".implode(";", $stock); // ANOTAR LA INSERCIÓN
+				}
+			}
+			// UNA VEZ TERMINADOS LOS INSERTS COMPROBAMOS SI ALGUNO HA FALLADO. DE SER ASÍ HACEMOS UN ROLLBACK E INFORMAMOS AL USUARIO. EN CASO CONTRARIO CONFIRMAMOS LOS CAMBIOS
+			if ($transaccion === False) {
+				$conexion->rollback();
+				$inserciones = str_replace("Se ha insertado correctamente la línea", "No se ha podido insertar la siguiente línea debido al fallo en la inserción de alguna línea anterior: ", $inserciones);
+				$errores = array_merge($errores, $inserciones);
+				$inserciones = array();
+			} else $conexion->commit(); // SI TODO HA IDO BIEN CONFIRMAMOS LOS CAMBIOS
+			$conexion->autocommit(True);
+			$conexion->close();
+			return array("errores" => $errores, "inserciones" => $inserciones);
+		} else { // INFORMAR DEL ERROR SI NO SE PUEDE ABRIR EL FICHERO
+			registrar_evento(time(), $_SESSION['email'], "Fallo al abrir el fichero para importar datos desde la función importar_csv_tabla_articulos()", "error"); // ANOTAR EVENTO EN LA BD
+			return "FALLO ABRIR";
+		}
 	}
 ?>

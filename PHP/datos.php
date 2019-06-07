@@ -49,7 +49,7 @@
 						<a class="nav-link" href="/PHP/articulos.php">Artículos</a>
 					</li>
 					<li class="nav-item">
-						<a class="nav-link pagina_activa" href="/PHP/logs.php">Exportar/Importar</a>
+						<a class="nav-link pagina_activa" href="/PHP/datos.php">Exportar/Importar</a>
 					</li>
 					<li class="nav-item">
 						<a class="nav-link" href="/PHP/logs.php">Logs</a>
@@ -79,10 +79,10 @@
 	<a href="../PHP/logs.php"><img src="../IMG/logo1.jpg" class="rounded-circle mx-auto d-block" id="logo1" alt="Cinque Terre"></a>
 </div>
 <div class="container-fluid">
-	<form method="post" action="">
-  <div class="row">
+	<form method="post" action="gestionar_datos.php" enctype="multipart/form-data">
+  <div class="row col-xl-10 col-lg-12 offset-xl-1">
 		<!-- ELEGIR SI SE DESEA IMPORTAR O EXPORTAR -->
-    <div class="col-sm-3" id="accion_div">
+    <div class="col-sm-2" id="accion_div">
 			<div class="custom-control custom-radio" id="exportar_div">
 				<input type="radio" id="exportar" value="exportar" name="campo_accion" class="custom-control-input" onclick="mostrar_fichero('exportar')">
 				<label class="custom-control-label" for="exportar">Exportar</label>
@@ -93,7 +93,7 @@
 			</div>
     </div>
 		<!-- ELEGIR SI SE DESEA CSV O EXCEL -->
-    <div class="col-sm-3" id="fichero_div">
+    <div class="col-sm-2" id="fichero_div">
 			<div class="custom-control custom-radio" id="csv_div" style="display: none;">
 				<input type="radio" id="csv" value="csv" name="campo_tipo_fichero" class="custom-control-input">
 				<label class="custom-control-label" for="csv">CSV</label>
@@ -104,12 +104,30 @@
 			</div>
     </div>
 		<!-- ELEGIR QUÉ DATOS SE DESEA EXPORTAR -->
-    <div class="col-sm-3" id="dato_div" style="display: none">
+    <div class="col-sm-6" id="dato_div" style="display: none">
 			<!-- DATOS EXPORTABLES -->
 			<div class="custom-control custom-radio" style="display: none;" id="consulta_div">
 				<input type="radio" id="consulta" value="consulta" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton()">
 				<label class="custom-control-label" for="consulta">
-					Consulta: <input type="text" name="campo_consulta">
+					Consulta: <input type="text" id="campo_consulta" name="campo_consulta">
+					<button class="button" type="button" id="guardar_consulta">Guardar</button>
+				</label>
+			</div>
+			<div class="custom-control custom-radio" style="display: none;" id="consultas_almacenadas_div">
+				<input type="radio" id="consultas_almacenadas" value="consultas_almacenadas" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton()">
+				<label class="custom-control-label" for="consultas_almacenadas">Consulta almacenada:
+					<select id="lista_consultas_almacenadas" class="custom-select" name="campo_consultas_almacenadas">
+<?php
+	$resultado_consultas = ver_consultas($_SESSION['email']);
+	if (is_array($resultado_consultas)) {
+		foreach ($resultado_consultas as $consulta) {
+			echo "<option value='".$consulta."'>".$consulta."</option>";
+		}
+	} else {
+		echo $resultado_consultas;
+	}
+?>
+					</select>
 				</label>
 			</div>
 			<div class="custom-control custom-radio" style="display: none;" id="tabla_div">
@@ -121,6 +139,8 @@
 					  <option value="usuarios">Usuarios</option>
 					  <option value="stock">Stock</option>
 						<option value="gestiona">Gestiona</option>
+						<option value="consultas">Consultas</option>
+						<option value="logs">Logs</option>
 					</select>
 				</label>
 			</div>
@@ -156,34 +176,46 @@
 			</div>
 			<!-- DATOS IMPORTABLES -->
 			<div class="custom-control custom-radio" style="display: none;" id="articulos_div">
-				<input type="radio" id="articulos" value="articulos" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton()">
+				<input type="radio" id="articulos" value="articulos" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton('campo_fichero')">
 				<label class="custom-control-label" for="articulos">Artículos</label>
 			</div>
 			<div class="custom-control custom-radio" style="display: none;" id="ubicaciones_div">
-				<input type="radio" id="ubicaciones" value="ubicaciones" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton()">
+				<input type="radio" id="ubicaciones" value="ubicaciones" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton('campo_fichero')">
 				<label class="custom-control-label" for="ubicaciones">Ubicaciones</label>
 			</div>
 			<div class="custom-control custom-radio" style="display: none;" id="usuarios_div">
-				<input type="radio" id="usuarios" value="usuarios" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton()">
+				<input type="radio" id="usuarios" value="usuarios" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton('campo_fichero')">
 				<label class="custom-control-label" for="usuarios">Usuarios</label>
 			</div>
 			<div class="custom-control custom-radio" style="display: none;" id="gestiona_div">
-				<input type="radio" id="gestiona" value="gestiona" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton()">
+				<input type="radio" id="gestiona" value="gestiona" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton('campo_fichero')">
 				<label class="custom-control-label" for="gestiona">Gestiona</label>
 			</div>
 			<div class="custom-control custom-radio" style="display: none;" id="stock_div">
-				<input type="radio" id="stock" value="stock" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton()">
+				<input type="radio" id="stock" value="stock" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton('campo_fichero')">
 				<label class="custom-control-label" for="stock">Stock</label>
 			</div>
+			<div class="custom-control custom-radio" style="display: none;" id="logs_div">
+				<input type="radio" id="logs" value="logs" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton('campo_fichero')">
+				<label class="custom-control-label" for="logs">Logs</label>
+			</div>
+			<div class="custom-control custom-radio" style="display: none;" id="consultas_div">
+				<input type="radio" id="consultas" value="consultas" name="campo_tipo_dato" class="custom-control-input" onclick="mostar_boton('campo_fichero')">
+				<label class="custom-control-label" for="consultas">Consultas</label>
+			</div>
     </div>
-		<div class="col-sm-3" id="boton_div" style="display: none">
-			 <input type="submit" name="campo_enviar" value="Descargar" class="btn btn-primary">
+		<div class="col-sm-1" id="campo_fichero_div" style="display: none">
+			<input type="file" id="campo_fichero" name="campo_fichero" class="form-control-file" onclick="mostar_boton('campo_fichero')">
+			<label class="custom-control-label" for="campo_fichero">Fichero:</label>
+		</div>
+		<div class="col-sm-1" id="boton_div" style="display: none">
+			 <input type="submit" id="campo_enviar" name="campo_enviar" value="" class="btn btn-primary">
     </div>
 
   </div>
 	</form>
 </div>
-	<p id="id_resultado"></p>
+</div>
 	<script src="../JS/jquery-3.3.1.min.js"></script>
 	<script src="../JS/jquery-confirm.min.js"></script>
 	<script src="../JS/popper.min.js"></script>

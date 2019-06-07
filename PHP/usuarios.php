@@ -49,6 +49,9 @@
 						<a id="articulos" class="nav-link" href="/PHP/articulos.php">Artículos</a>
 					</li>
 					<li class="nav-item">
+						<a class="nav-link" href="/PHP/datos.php">Exportar/Importar</a>
+					</li>
+					<li class="nav-item">
 						<a id="logs" class="nav-link" href="/PHP/logs.php">Logs</a>
 					</li>
 					<li class="nav-item">

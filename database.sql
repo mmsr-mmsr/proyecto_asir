@@ -1,4 +1,4 @@
-DROP DATABASE inventario;
+--DROP DATABASE inventario;
 -- SET autocommit=0;
 CREATE DATABASE IF NOT EXISTS inventario;
 USE inventario;
@@ -46,8 +46,15 @@ CREATE TABLE IF NOT EXISTS logs (
 	fecha INT,
 	usuario VARCHAR(30),
 	descripcion VARCHAR(400) NOT NULL,
-	tipo VARCHAR(5) NOT NULL,
+	tipo VARCHAR(8) NOT NULL,
 	CONSTRAINT logs_pk PRIMARY KEY (fecha, usuario)
+) ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS consultas (
+	consulta VARCHAR(90),
+	usuario VARCHAR(30),
+	CONSTRAINT consultas_pk PRIMARY KEY (consulta, usuario),
+	CONSTRAINT consulta_usuario_fk FOREIGN KEY (usuario) REFERENCES usuarios (email) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
 -- EMULAR CONDICION CHECK SQL MEDIANTE TRIGGERS YA QUE MYSQL NO LOS PERMITE. SI LAS CONDICIONES NO SE CUMPLE GENERA UNA EXCEPCION
@@ -58,7 +65,7 @@ CREATE OR REPLACE PROCEDURE comprobar_tipos (IN tabla VARCHAR(13), IN tipo VARCH
 BEGIN
 	-- SI LA COLUMNA TIPO DE LA TABLA LOGS NO ES ERROR NI LOGIN, LANZAMOS ERROR
 	IF tabla = "logs" THEN
-		IF tipo NOT IN ("error", "login") THEN
+		IF tipo NOT IN ("error", "login", "consulta") THEN
 			SIGNAL SQLSTATE "45000"
 				SET MESSAGE_TEXT = "EL TIPO DE LOG NO ES CORRECTO";
 		END IF;
@@ -69,7 +76,7 @@ BEGIN
 				SET MESSAGE_TEXT = "EL TIPO DE USUARIO NO ES CORRECTO";
 		END IF;
 	END IF;
-	
+
 END$
 
 -- TRIGGER PARA INSERTAR UN USUARIO, LLAMA AL PROCEDIMIENTO ANTERIOR
@@ -99,4 +106,3 @@ INSERT INTO usuarios VALUES ("admin", "21232f297a57a5a743894a0e4a801fc3", "migue
 INSERT INTO usuarios VALUES ("miriam", "21232f297a57a5a743894a0e4a801fc3", "miriam", "administrador");
 INSERT INTO usuarios VALUES ("10282084@iesserraperenxisa.com", "21232f297a57a5a743894a0e4a801fc3", "santi", "editor");
 INSERT INTO usuarios VALUES ("10282085@iesserraperenxisa.com", "21232f297a57a5a743894a0e4a801fc3", "juanjo", "estandar");
-

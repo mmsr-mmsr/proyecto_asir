@@ -326,7 +326,7 @@ function cancelar_modificar_ubicacion(elemento) {
   // CAMBIAR LOS BOTONES DE CONFIRMAR O CANCELAR LA MODIFICACIÓN POR LOS HABITUALES DE "ACCIONES"
   botones = $(elemento).parent();
   $(botones).html(
-    "<button type='button' data-toggle='tooltip' data-placement='top' title='Ver localizaciones'><i class='fas fa-search'></i></button>" +
+    "<button onclick='ver_articulos(this)' type='button' data-toggle='tooltip' data-placement='top' title='Ver inventario'><i class='fas fa-search'></i></button>" +
     "<button onclick='eliminar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Eliminar ubicación'><i class='fas fa-trash'></i></button>" +
     "<button onclick='modificar_ubicacion(this)' type='button' data-toggle='tooltip' data-placement='top' title='Modificar ubicación'><i class='fas fa-pen'></i></button>"
   );
